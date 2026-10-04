@@ -9,22 +9,45 @@ from core.data_boss_brain import DataBossBrain
 from zalo.bridge import ZaloBridge
 from zalo.data_boss_listener import DataBossListener
 
+import subprocess
+
+def ensure_daemon_running(bridge: ZaloBridge) -> bool:
+    """Tự động kiểm tra và khởi động Zalo Daemon ngầm nếu chưa chạy."""
+    status = bridge.check_connection()
+    if status.get("authenticated", False):
+        return True
+
+    print("[Hệ thống] Zalo Daemon chưa bật. Đang tự động kích hoạt ngầm...")
+    cli_path = r"C:\Users\baotu\AppData\Roaming\npm\node_modules\zalo-personal-mcp\dist\bin\cli.js"
+    CREATE_NO_WINDOW = 0x08000000
+    try:
+        subprocess.Popen(
+            ["node", cli_path, "daemon", "start"],
+            creationflags=CREATE_NO_WINDOW,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        for _ in range(6):
+            time.sleep(1.0)
+            status = bridge.check_connection()
+            if status.get("authenticated", False):
+                return True
+    except Exception:
+        pass
+    return False
+
 def main():
     print("=" * 65)
     print(" 🤖 KHỞI ĐỘNG BOT 'ĐẠI CA DỮ LIỆU' - TRỢ LÝ GIÁM SÁT DỰ ÁN ZALO")
     print("=" * 65)
 
     bridge = ZaloBridge()
-    conn_status = bridge.check_connection()
-    if not conn_status.get("authenticated", False):
-        print(f"❌ [CHƯA KẾT NỐI ĐƯỢC ZALO DAEMON TẠI {bridge.base_url}]")
-        print("👉 Vui lòng mở thêm 1 cửa sổ PowerShell và chạy lệnh sau để kết nối:")
-        print("   powershell -ExecutionPolicy Bypass -File C:\\Users\\baotu\\.zalo-personal-mcp\\connect.ps1")
-        print("-" * 65)
-        print("Sau khi quét mã QR và đăng nhập thành công, hãy chạy lại lệnh này nhé!")
+    if not ensure_daemon_running(bridge):
+        print(f"❌ [CHƯA KẾT NỐI ĐƯỢC ZALO]")
+        print("👉 Có thể phiên đăng nhập đã hết hạn. Hãy chạy file 1_KET_NOI_ZALO.bat để quét lại mã QR nhé!")
         return
 
-    user_name = conn_status.get("displayName", "Người dùng Zalo")
+    conn_status = bridge.check_connection()
     print(f"✅ Đã kết nối Zalo thành công! Tài khoản: {user_name}")
 
     db = ConstructionDB()
