@@ -280,3 +280,141 @@ class ConstructionDB:
                 LIMIT ?
             """, (limit,))
             return [dict(r) for r in cursor.fetchall()]
+
+    def get_categories(self) -> List[str]:
+        """Lấy danh sách tất cả các hạng mục chính để đưa vào bộ lọc."""
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT category FROM progress_items WHERE category IS NOT NULL AND category != '' ORDER BY category")
+            rows = cursor.fetchall()
+            return [row["category"] for row in rows]
+
+    def search_progress_items(
+        self,
+        keyword: Optional[str] = None,
+        category: Optional[str] = None,
+        latest_only: bool = False,
+        limit: int = 200
+    ) -> List[Dict[str, Any]]:
+        """
+        Tìm kiếm và lọc các hạng mục tiến độ theo từ khóa, danh mục, và tùy chọn chỉ lấy mới nhất.
+        """
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            base_query = """
+                SELECT p.id, p.report_id, p.category, p.sub_item, p.unit,
+                       p.shift_qty, p.accumulated_qty, p.design_qty,
+                       p.completion_rate, p.status_note,
+                       r.report_date, r.shift_name, r.reporter_name,
+                       c.name as contractor_name
+                FROM progress_items p
+                JOIN shift_reports r ON p.report_id = r.id
+                JOIN contractors c ON r.contractor_id = c.id
+            """
+            conditions = []
+            params = []
+
+            if latest_only:
+                conditions.append("""
+                    p.id IN (
+                        SELECT MAX(p2.id)
+                        FROM progress_items p2
+                        GROUP BY p2.category, p2.sub_item
+                    )
+                """)
+
+            if category and category.strip() and category != "[Tất cả hạng mục]":
+                conditions.append("p.category = ?")
+                params.append(category.strip())
+
+            if keyword and keyword.strip():
+                kw = f"%{keyword.strip()}%"
+                conditions.append("""
+                    (p.category LIKE ? OR p.sub_item LIKE ? OR p.status_note LIKE ?
+                     OR r.report_date LIKE ? OR r.shift_name LIKE ?
+                     OR r.reporter_name LIKE ? OR c.name LIKE ?)
+                """)
+                params.extend([kw, kw, kw, kw, kw, kw, kw])
+
+            if conditions:
+                base_query += " WHERE " + " AND ".join(conditions)
+
+            base_query += " ORDER BY r.report_date DESC, p.id DESC LIMIT ?"
+            params.append(limit)
+
+            cursor.execute(base_query, tuple(params))
+            return [dict(r) for r in cursor.fetchall()]
+
+    def search_piles(
+        self,
+        keyword: Optional[str] = None,
+        latest_only: bool = True,
+        limit: int = 200
+    ) -> List[Dict[str, Any]]:
+        """
+        Tìm kiếm và lọc chi tiết các tim cọc đang thi công hoặc đã ghi nhận.
+        """
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            base_query = """
+                SELECT pd.id, pd.report_id, pd.category, pd.location, pd.pile_id, pd.status, pd.recorded_at,
+                       r.report_date, r.shift_name, c.name as contractor_name
+                FROM pile_details pd
+                JOIN shift_reports r ON pd.report_id = r.id
+                JOIN contractors c ON r.contractor_id = c.id
+            """
+            conditions = []
+            params = []
+
+            if latest_only:
+                conditions.append("""
+                    pd.id IN (
+                        SELECT MAX(p2.id)
+                        FROM pile_details p2
+                        GROUP BY p2.pile_id
+                    )
+                """)
+
+            if keyword and keyword.strip():
+                kw = f"%{keyword.strip()}%"
+                conditions.append("""
+                    (pd.location LIKE ? OR pd.pile_id LIKE ? OR pd.status LIKE ?
+                     OR r.report_date LIKE ? OR pd.category LIKE ? OR c.name LIKE ?)
+                """)
+                params.extend([kw, kw, kw, kw, kw, kw])
+
+            if conditions:
+                base_query += " WHERE " + " AND ".join(conditions)
+
+            base_query += " ORDER BY r.report_date DESC, pd.id DESC LIMIT ?"
+            params.append(limit)
+
+            cursor.execute(base_query, tuple(params))
+            return [dict(r) for r in cursor.fetchall()]
+
+    def get_report_detail(self, report_id: int) -> Optional[Dict[str, Any]]:
+        """Lấy chi tiết toàn bộ nội dung của một ca báo cáo."""
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT r.*, c.name as contractor_name, p.name as project_name
+                FROM shift_reports r
+                LEFT JOIN contractors c ON r.contractor_id = c.id
+                LEFT JOIN projects p ON r.project_id = p.id
+                WHERE r.id = ?
+            """, (report_id,))
+            rep = cursor.fetchone()
+            if not rep:
+                return None
+            res = dict(rep)
+
+            cursor.execute("SELECT * FROM progress_items WHERE report_id = ? ORDER BY id", (report_id,))
+            res["items"] = [dict(r) for r in cursor.fetchall()]
+
+            cursor.execute("SELECT * FROM pile_details WHERE report_id = ? ORDER BY id", (report_id,))
+            res["piles"] = [dict(r) for r in cursor.fetchall()]
+
+            cursor.execute("SELECT * FROM site_photos WHERE report_id = ? ORDER BY id", (report_id,))
+            res["photos"] = [dict(r) for r in cursor.fetchall()]
+
+            return res

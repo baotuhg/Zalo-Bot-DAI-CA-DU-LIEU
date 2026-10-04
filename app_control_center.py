@@ -7,6 +7,7 @@ import sys
 import webbrowser
 import subprocess
 from pathlib import Path
+from typing import List, Dict, Any, Optional
 
 # Thêm đường dẫn project vào sys.path
 BASE_DIR = Path(__file__).resolve().parent
@@ -24,12 +25,13 @@ from zalo.data_boss_listener import DataBossListener
 from sync_github import auto_push_to_github
 from run_data_boss import ensure_daemon_running
 
+
 class DataBossControlApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("🏗️ BẢNG ĐIỀU KHIỂN - ĐẠI CA DỮ LIỆU (CONTECH ZALO)")
-        self.root.geometry("820x680")
-        self.root.minsize(760, 600)
+        self.root.title("🏗️ BẢNG ĐIỀU KHIỂN & TRA CỨU DỮ LIỆU — ĐẠI CA DỮ LIỆU (CONTECH ZALO)")
+        self.root.geometry("1000x740")
+        self.root.minsize(860, 620)
         self.root.configure(bg="#F4F6F8")
 
         # Khởi tạo lõi hệ thống
@@ -45,62 +47,98 @@ class DataBossControlApp:
         self.bot_thread = None
         self.groups_data = []
 
+        # Dữ liệu tìm kiếm hiện tại
+        self.current_items: List[Dict[str, Any]] = []
+        self.current_piles: List[Dict[str, Any]] = []
+        self.sort_column = ""
+        self.sort_reverse = False
+
         self._setup_styles()
         self._build_ui()
         self._check_zalo_status_async()
+        self._refresh_filter_categories()
+        self._do_search()
 
     def _setup_styles(self):
         style = ttk.Style()
         style.theme_use("clam")
-        
+
         style.configure("TLabel", background="#F4F6F8", font=("Segoe UI", 10))
-        style.configure("Header.TLabel", font=("Segoe UI", 16, "bold"), foreground="#1F4E79")
-        style.configure("SubHeader.TLabel", font=("Segoe UI", 10), foreground="#5A6A80")
+        style.configure("Header.TLabel", font=("Segoe UI", 15, "bold"), foreground="#1F4E79")
+        style.configure("SubHeader.TLabel", font=("Segoe UI", 9), foreground="#5A6A80")
         style.configure("Status.TLabel", font=("Segoe UI", 10, "bold"))
-        
-        style.configure("Primary.TButton", font=("Segoe UI", 10, "bold"), background="#0E6655", foreground="#FFFFFF")
-        style.map("Primary.TButton", background=[("active", "#094A3E")])
 
-        style.configure("Stop.TButton", font=("Segoe UI", 10, "bold"), background="#B8362A", foreground="#FFFFFF")
-        style.map("Stop.TButton", background=[("active", "#8E2319")])
+        style.configure("TNotebook", background="#F4F6F8")
+        style.configure("TNotebook.Tab", font=("Segoe UI", 10, "bold"), padding=[14, 6], background="#E2E8F0")
+        style.map("TNotebook.Tab",
+                  background=[("selected", "#1F4E79")],
+                  foreground=[("selected", "#FFFFFF")])
 
-        style.configure("Action.TButton", font=("Segoe UI", 9, "bold"))
+        # Style Treeview bảng dữ liệu
+        style.configure("Treeview",
+                        font=("Segoe UI", 9),
+                        rowheight=24,
+                        background="#FFFFFF",
+                        fieldbackground="#FFFFFF")
+        style.configure("Treeview.Heading",
+                        font=("Segoe UI", 9, "bold"),
+                        background="#E2E8F0",
+                        foreground="#1E293B")
+        style.map("Treeview.Heading", background=[("active", "#CBD5E1")])
 
     def _build_ui(self):
-        # 1. Header Frame
-        header_frame = tk.Frame(self.root, bg="#FFFFFF", padx=20, pady=14, relief="ridge", bd=1)
-        header_frame.pack(fill="x", padx=14, pady=(12, 8))
+        # 1. Header Frame (Cố định ở đỉnh)
+        header_frame = tk.Frame(self.root, bg="#FFFFFF", padx=18, pady=12, relief="ridge", bd=1)
+        header_frame.pack(fill="x", padx=12, pady=(10, 6))
 
-        lbl_title = ttk.Label(header_frame, text="🏗️ BẢNG ĐIỀU KHIỂN TRUNG TÂM — ĐẠI CA DỮ LIỆU", style="Header.TLabel", background="#FFFFFF")
-        lbl_title.pack(anchor="w")
+        top_row = tk.Frame(header_frame, bg="#FFFFFF")
+        top_row.pack(fill="x")
+
+        lbl_title = ttk.Label(top_row, text="🏗️ BẢNG ĐIỀU KHIỂN & TRA CỨU DỮ LIỆU — ĐẠI CA DỮ LIỆU", style="Header.TLabel", background="#FFFFFF")
+        lbl_title.pack(side="left")
+
+        # Status Bar Zalo bên phải
+        status_box = tk.Frame(top_row, bg="#FFFFFF")
+        status_box.pack(side="right")
+
+        self.lbl_zalo_status = tk.Label(status_box, text="🟡 Đang kết nối Zalo...", font=("Segoe UI", 9, "bold"), bg="#FFFFFF", fg="#B8740A")
+        self.lbl_zalo_status.pack(side="left", padx=6)
+
+        btn_reconnect = tk.Button(status_box, text="🔄 Kết nối lại", font=("Segoe UI", 8), bg="#E9ECE6", relief="flat", command=self._reconnect_zalo)
+        btn_reconnect.pack(side="left")
 
         lbl_sub = ttk.Label(
             header_frame,
-            text="Tự động thu thập báo cáo ca từ Zalo ➔ Đồng bộ CSDL ➔ Cập nhật Excel sống ➔ Đẩy lên Web trực tuyến",
+            text="Thu thập tự động báo cáo thi công Zalo ➔ Phân tích ngữ nghĩa ➔ CSDL SQLite WBS ➔ Excel sống ➔ Web Dashboard",
             style="SubHeader.TLabel",
             background="#FFFFFF"
         )
-        lbl_sub.pack(anchor="w", pady=(2, 6))
+        lbl_sub.pack(anchor="w", pady=(2, 0))
 
-        # Status Bar con trong header
-        status_bar = tk.Frame(header_frame, bg="#FFFFFF")
-        status_bar.pack(fill="x", pady=(4, 0))
+        # 2. Main Notebook Tabs
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True, padx=12, pady=(4, 10))
 
-        self.lbl_zalo_status = tk.Label(status_bar, text="🟡 Đang kiểm tra kết nối Zalo...", font=("Segoe UI", 10, "bold"), bg="#FFFFFF", fg="#B8740A")
-        self.lbl_zalo_status.pack(side="left")
+        # Tab 1: Giám sát & Điều khiển
+        self.tab_monitor = tk.Frame(self.notebook, bg="#F4F6F8")
+        self.notebook.add(self.tab_monitor, text="  🎛️ BẢNG ĐIỀU KHIỂN & GIÁM SÁT  ")
+        self._build_tab_monitor()
 
-        btn_reconnect = tk.Button(status_bar, text="🔄 Kết nối lại", font=("Segoe UI", 8), bg="#E9ECE6", relief="flat", command=self._reconnect_zalo)
-        btn_reconnect.pack(side="left", padx=8)
+        # Tab 2: Tra cứu & Lọc dữ liệu
+        self.tab_search = tk.Frame(self.notebook, bg="#F4F6F8")
+        self.notebook.add(self.tab_search, text="  🔍 TÌM KIẾM & LỌC DỮ LIỆU  ")
+        self._build_tab_search()
 
-        # 2. Main Control Frame (Chọn nhóm & Bật/Tắt Bot)
-        ctrl_frame = tk.LabelFrame(self.root, text=" 🎯 Cấu hình & Giám sát Nhóm Zalo ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=16, pady=12)
-        ctrl_frame.pack(fill="x", padx=14, pady=6)
+    def _build_tab_monitor(self):
+        # 1. Main Control Frame (Chọn nhóm & Bật/Tắt Bot)
+        ctrl_frame = tk.LabelFrame(self.tab_monitor, text=" 🎯 Cấu hình & Giám sát Nhóm Zalo ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=16, pady=10)
+        ctrl_frame.pack(fill="x", padx=10, pady=6)
 
         row_group = tk.Frame(ctrl_frame, bg="#F4F6F8")
         row_group.pack(fill="x", pady=4)
 
         tk.Label(row_group, text="Nhóm Zalo cần lọc báo cáo:", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
-        
+
         self.combo_group = ttk.Combobox(row_group, font=("Segoe UI", 10), state="readonly", width=42)
         self.combo_group.pack(side="left", padx=10, fill="x", expand=True)
         self.combo_group.set("Đang tải danh sách nhóm...")
@@ -110,7 +148,7 @@ class DataBossControlApp:
 
         # Hàng nút Bật / Tắt Bot
         row_bot_btn = tk.Frame(ctrl_frame, bg="#F4F6F8")
-        row_bot_btn.pack(fill="x", pady=(10, 4))
+        row_bot_btn.pack(fill="x", pady=(8, 4))
 
         self.btn_toggle_bot = tk.Button(
             row_bot_btn,
@@ -132,79 +170,95 @@ class DataBossControlApp:
         self.lbl_bot_state = tk.Label(row_bot_btn, text="⚪ Bot đang Dừng", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", fg="#5A6A80", padx=14)
         self.lbl_bot_state.pack(side="left")
 
-        # 3. Phím bấm thao tác nhanh 1-Click
-        action_frame = tk.LabelFrame(self.root, text=" ⚡ Thao tác nhanh 1-Click ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=14, pady=10)
-        action_frame.pack(fill="x", padx=14, pady=6)
+        # 2. Phím bấm thao tác nhanh 1-Click
+        action_frame = tk.LabelFrame(self.tab_monitor, text=" ⚡ Thao tác nhanh 1-Click ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=12, pady=10)
+        action_frame.pack(fill="x", padx=10, pady=6)
 
         btn_grid = tk.Frame(action_frame, bg="#F4F6F8")
         btn_grid.pack(fill="x")
 
-        # Nút 1: Mở Web Dashboard
+        # NÚT ĐẶC BIỆT: TÌM KIẾM & LỌC DỮ LIỆU
+        btn_goto_search = tk.Button(
+            btn_grid,
+            text="🔍 TÌM KIẾM & LỌC DỮ LIỆU",
+            font=("Segoe UI", 10, "bold"),
+            bg="#0284C7",
+            fg="#FFFFFF",
+            padx=10,
+            pady=8,
+            cursor="hand2",
+            relief="raised",
+            bd=2,
+            command=self._switch_to_search_tab
+        )
+        btn_goto_search.grid(row=0, column=0, padx=4, pady=4, sticky="nsew")
+
+        # Nút Mở Web Dashboard
         btn_web = tk.Button(
             btn_grid,
-            text="🌐 MỞ WEB DASHBOARD ONLINE",
+            text="🌐 MỞ WEB DASHBOARD",
             font=("Segoe UI", 9, "bold"),
             bg="#1F4E79",
             fg="#FFFFFF",
-            padx=10,
+            padx=8,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._open_web_dashboard
         )
-        btn_web.grid(row=0, column=0, padx=6, pady=4, sticky="nsew")
+        btn_web.grid(row=0, column=1, padx=4, pady=4, sticky="nsew")
 
-        # Nút 2: Mở Excel
+        # Nút Mở Excel
         btn_excel = tk.Button(
             btn_grid,
-            text="📑 MỞ BẢNG TÍNH EXCEL SỐNG",
+            text="📑 MỞ EXCEL SỐNG",
             font=("Segoe UI", 9, "bold"),
             bg="#2E7A48",
             fg="#FFFFFF",
-            padx=10,
+            padx=8,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._open_excel
         )
-        btn_excel.grid(row=0, column=1, padx=6, pady=4, sticky="nsew")
+        btn_excel.grid(row=0, column=2, padx=4, pady=4, sticky="nsew")
 
-        # Nút 3: Nạp thử báo cáo mẫu
+        # Nút Nạp thử báo cáo mẫu
         btn_sample = tk.Button(
             btn_grid,
-            text="🧪 NẠP THỬ BÁO CÁO MẪU",
+            text="🧪 NẠP BÁO CÁO MẪU",
             font=("Segoe UI", 9, "bold"),
             bg="#C98407",
             fg="#FFFFFF",
-            padx=10,
+            padx=8,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._feed_sample_report
         )
-        btn_sample.grid(row=0, column=2, padx=6, pady=4, sticky="nsew")
+        btn_sample.grid(row=0, column=3, padx=4, pady=4, sticky="nsew")
 
-        # Nút 4: Đồng bộ Git lên GitHub Pages
+        # Nút Đồng bộ Git
         btn_git = tk.Button(
             btn_grid,
-            text="🔄 ĐỒNG BỘ LÊN GITHUB PAGES",
+            text="🔄 ĐỒNG BỘ GITHUB PAGES",
             font=("Segoe UI", 9, "bold"),
             bg="#4B5563",
             fg="#FFFFFF",
-            padx=10,
+            padx=8,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._manual_git_sync
         )
-        btn_git.grid(row=0, column=3, padx=6, pady=4, sticky="nsew")
+        btn_git.grid(row=0, column=4, padx=4, pady=4, sticky="nsew")
 
-        for c in range(4):
+        for c in range(5):
             btn_grid.columnconfigure(c, weight=1)
 
-        # 4. Live Log Window (Nhật ký hoạt động sạch đẹp)
-        log_frame = tk.LabelFrame(self.root, text=" 📜 Nhật ký hoạt động thời gian thực ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=10, pady=8)
-        log_frame.pack(fill="both", expand=True, padx=14, pady=(6, 12))
+        # 3. Live Log Window
+        log_frame = tk.LabelFrame(self.tab_monitor, text=" 📜 Nhật ký hoạt động thời gian thực ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=10, pady=8)
+        log_frame.pack(fill="both", expand=True, padx=10, pady=(6, 8))
 
         self.txt_log = scrolledtext.ScrolledText(log_frame, font=("Consolas", 9), bg="#1E2227", fg="#ABB2BF", wrap="word", relief="flat")
         self.txt_log.pack(fill="both", expand=True)
@@ -212,6 +266,405 @@ class DataBossControlApp:
         self._log("Hệ thống Bảng điều khiển All-in-One sẵn sàng.")
         self._log("Link Web trực tuyến: https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/")
 
+    def _build_tab_search(self):
+        # 1. Filter Control Box
+        filter_box = tk.LabelFrame(self.tab_search, text=" 🎯 Bộ lọc & Điều kiện tìm kiếm ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=12, pady=10)
+        filter_box.pack(fill="x", padx=10, pady=6)
+
+        # Hàng 1: Từ khóa + Hạng mục + Nút Tìm kiếm
+        row1 = tk.Frame(filter_box, bg="#F4F6F8")
+        row1.pack(fill="x", pady=3)
+
+        tk.Label(row1, text="🔍 Từ khóa:", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
+        self.entry_keyword = ttk.Entry(row1, font=("Segoe UI", 10), width=24)
+        self.entry_keyword.pack(side="left", padx=(6, 12))
+        self.entry_keyword.bind("<Return>", lambda e: self._do_search())
+
+        tk.Label(row1, text="📁 Hạng mục:", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
+        self.combo_filter_cat = ttk.Combobox(row1, font=("Segoe UI", 10), state="readonly", width=22)
+        self.combo_filter_cat.pack(side="left", padx=(6, 12))
+        self.combo_filter_cat.set("[Tất cả hạng mục]")
+        self.combo_filter_cat.bind("<<ComboboxSelected>>", lambda e: self._do_search())
+
+        self.var_latest_only = tk.BooleanVar(value=True)
+        chk_latest = ttk.Checkbutton(row1, text="Chỉ lấy số liệu mới nhất", variable=self.var_latest_only, command=self._do_search)
+        chk_latest.pack(side="left", padx=8)
+
+        btn_search = tk.Button(
+            row1,
+            text="🔍 TÌM KIẾM",
+            font=("Segoe UI", 9, "bold"),
+            bg="#0E6655",
+            fg="#FFFFFF",
+            activebackground="#094A3E",
+            padx=12,
+            pady=4,
+            relief="raised",
+            cursor="hand2",
+            command=self._do_search
+        )
+        btn_search.pack(side="left", padx=4)
+
+        btn_reset = tk.Button(
+            row1,
+            text="🔄 TẤT CẢ",
+            font=("Segoe UI", 9),
+            bg="#E2E8F0",
+            fg="#1E293B",
+            padx=10,
+            pady=4,
+            relief="flat",
+            cursor="hand2",
+            command=self._reset_search
+        )
+        btn_reset.pack(side="left", padx=4)
+
+        # Hàng 2: Chọn chế độ xem & Thao tác xuất
+        row2 = tk.Frame(filter_box, bg="#F4F6F8")
+        row2.pack(fill="x", pady=(8, 2))
+
+        tk.Label(row2, text="Chế độ xem:", font=("Segoe UI", 9, "bold"), bg="#F4F6F8").pack(side="left")
+
+        self.var_view_type = tk.StringVar(value="items")
+        rb_items = ttk.Radiobutton(row2, text="📊 Hạng mục & Khối lượng (WBS)", variable=self.var_view_type, value="items", command=self._switch_view_mode)
+        rb_items.pack(side="left", padx=8)
+
+        rb_piles = ttk.Radiobutton(row2, text="📍 Chi tiết Tim cọc Hiện trường", variable=self.var_view_type, value="piles", command=self._switch_view_mode)
+        rb_piles.pack(side="left", padx=8)
+
+        btn_view_detail = tk.Button(
+            row2,
+            text="📋 Xem chi tiết ca",
+            font=("Segoe UI", 9),
+            bg="#1F4E79",
+            fg="#FFFFFF",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=self._view_selected_detail
+        )
+        btn_view_detail.pack(side="right", padx=4)
+
+        btn_export = tk.Button(
+            row2,
+            text="📑 Xuất kết quả ra Excel",
+            font=("Segoe UI", 9, "bold"),
+            bg="#2E7A48",
+            fg="#FFFFFF",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=self._export_search_excel
+        )
+        btn_export.pack(side="right", padx=4)
+
+        # 2. Thống kê kết quả tìm kiếm
+        summary_frame = tk.Frame(self.tab_search, bg="#E2E8F0", padx=10, pady=4)
+        summary_frame.pack(fill="x", padx=10, pady=(2, 4))
+
+        self.lbl_search_summary = tk.Label(
+            summary_frame,
+            text="📊 Đang tải dữ liệu...",
+            font=("Segoe UI", 9, "bold"),
+            bg="#E2E8F0",
+            fg="#1E293B"
+        )
+        self.lbl_search_summary.pack(side="left")
+
+        lbl_hint = tk.Label(
+            summary_frame,
+            text="💡 Mẹo: Nhấn đúp vào dòng để xem nội dung báo cáo gốc từ Zalo | Nhấn tiêu đề cột để sắp xếp",
+            font=("Segoe UI", 8, "italic"),
+            bg="#E2E8F0",
+            fg="#64748B"
+        )
+        lbl_hint.pack(side="right")
+
+        # 3. Data Table Treeview with Scrollbars
+        table_frame = tk.Frame(self.tab_search, bg="#F4F6F8")
+        table_frame.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+
+        self.tree_scroll_y = ttk.Scrollbar(table_frame, orient="vertical")
+        self.tree_scroll_x = ttk.Scrollbar(table_frame, orient="horizontal")
+
+        self.tree = ttk.Treeview(
+            table_frame,
+            selectmode="browse",
+            yscrollcommand=self.tree_scroll_y.set,
+            xscrollcommand=self.tree_scroll_x.set
+        )
+
+        self.tree_scroll_y.config(command=self.tree.yview)
+        self.tree_scroll_x.config(command=self.tree.xview)
+
+        self.tree_scroll_y.pack(side="right", fill="y")
+        self.tree_scroll_x.pack(side="bottom", fill="x")
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        self.tree.tag_configure("evenrow", background="#FFFFFF")
+        self.tree.tag_configure("oddrow", background="#F8FAFC")
+        self.tree.bind("<Double-1>", lambda e: self._view_selected_detail())
+
+    def _switch_to_search_tab(self):
+        """Chuyển sang Tab Tìm kiếm và focus vào ô nhập từ khóa."""
+        self.notebook.select(self.tab_search)
+        self.entry_keyword.focus_set()
+        self.entry_keyword.select_range(0, tk.END)
+
+    def _refresh_filter_categories(self):
+        """Cập nhật danh sách hạng mục trong combobox từ DB."""
+        try:
+            cats = self.db.get_categories()
+            values = ["[Tất cả hạng mục]"] + cats
+            self.combo_filter_cat["values"] = values
+        except Exception:
+            pass
+
+    def _switch_view_mode(self):
+        """Chuyển giữa xem Hạng mục WBS và Chi tiết Tim cọc."""
+        self._do_search()
+
+    def _do_search(self):
+        """Thực hiện tìm kiếm và hiển thị dữ liệu lên bảng."""
+        keyword = self.entry_keyword.get().strip()
+        cat = self.combo_filter_cat.get()
+        latest_only = self.var_latest_only.get()
+        view_type = self.var_view_type.get()
+
+        if view_type == "items":
+            self._search_and_show_items(keyword, cat, latest_only)
+        else:
+            self._search_and_show_piles(keyword, latest_only)
+
+    def _reset_search(self):
+        """Xóa toàn bộ điều kiện lọc và nạp lại tất cả."""
+        self.entry_keyword.delete(0, tk.END)
+        self.combo_filter_cat.set("[Tất cả hạng mục]")
+        self.var_latest_only.set(True)
+        self._refresh_filter_categories()
+        self._do_search()
+
+    def _search_and_show_items(self, keyword: str, category: str, latest_only: bool):
+        # 1. Cấu hình cột cho Hạng mục WBS
+        columns = ("stt", "date", "shift", "contractor", "category", "sub_item", "unit", "shift_qty", "accumulated_qty", "design_qty", "rate", "status_note")
+        self.tree["columns"] = columns
+        self.tree["show"] = "headings"
+
+        col_defs = [
+            ("stt", "STT", 45, "center"),
+            ("date", "Ngày", 85, "center"),
+            ("shift", "Ca", 85, "center"),
+            ("contractor", "Nhà thầu", 110, "w"),
+            ("category", "Hạng mục thi công", 170, "w"),
+            ("sub_item", "Vị trí / Cấu kiện", 150, "w"),
+            ("unit", "ĐVT", 55, "center"),
+            ("shift_qty", "Ca này", 65, "e"),
+            ("accumulated_qty", "Lũy kế", 70, "e"),
+            ("design_qty", "Tổng TK", 70, "e"),
+            ("rate", "Tiến độ", 75, "center"),
+            ("status_note", "Tình trạng / Tim cọc", 220, "w"),
+        ]
+
+        for col_id, col_text, col_w, col_anchor in col_defs:
+            self.tree.heading(col_id, text=col_text, command=lambda c=col_id: self._sort_tree(c))
+            self.tree.column(col_id, width=col_w, minwidth=40, anchor=col_anchor)
+
+        # Xóa dữ liệu cũ
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Truy vấn DB
+        items = self.db.search_progress_items(keyword=keyword, category=category, latest_only=latest_only, limit=300)
+        self.current_items = items
+
+        total_shift = 0.0
+        total_acc = 0.0
+        total_pct = 0.0
+
+        for idx, it in enumerate(items, 1):
+            tag = "evenrow" if idx % 2 == 0 else "oddrow"
+            shift_q = it.get("shift_qty", 0.0)
+            acc_q = it.get("accumulated_qty", 0.0)
+            des_q = it.get("design_qty", 0.0)
+            rate = it.get("completion_rate", 0.0)
+
+            total_shift += shift_q
+            total_acc += acc_q
+            total_pct += rate
+
+            str_shift = f"{shift_q:g}"
+            str_acc = f"{acc_q:g}"
+            str_des = f"{des_q:g}"
+            str_rate = f"{rate:.1f}%" if des_q > 0 else "-"
+
+            row_values = (
+                idx,
+                it.get("report_date", "-"),
+                it.get("shift_name", "-"),
+                it.get("contractor_name", "-"),
+                it.get("category", "-"),
+                it.get("sub_item", "-"),
+                it.get("unit", "Cấu kiện"),
+                str_shift,
+                str_acc,
+                str_des,
+                str_rate,
+                it.get("status_note", "-"),
+            )
+            # Lưu report_id vào item id để xem chi tiết
+            self.tree.insert("", "end", iid=f"item_{it.get('id')}_{it.get('report_id')}", values=row_values, tags=(tag,))
+
+        # Cập nhật thanh tóm tắt
+        count = len(items)
+        avg_pct = (total_pct / count) if count > 0 else 0.0
+        mode_text = "Mới nhất" if latest_only else "Toàn bộ lịch sử"
+        self.lbl_search_summary.config(
+            text=f"📊 Tìm thấy: {count} hạng mục [{mode_text}] | Tổng KL ca: {total_shift:g} | Tổng lũy kế: {total_acc:g} | Tiến độ TB: {avg_pct:.1f}%"
+        )
+
+    def _search_and_show_piles(self, keyword: str, latest_only: bool):
+        # 1. Cấu hình cột cho Tim Cọc
+        columns = ("stt", "date", "shift", "contractor", "location", "pile_id", "status")
+        self.tree["columns"] = columns
+        self.tree["show"] = "headings"
+
+        col_defs = [
+            ("stt", "STT", 50, "center"),
+            ("date", "Ngày", 95, "center"),
+            ("shift", "Ca", 95, "center"),
+            ("contractor", "Nhà thầu", 130, "w"),
+            ("location", "Vị trí / Mố trụ", 150, "w"),
+            ("pile_id", "Mã cọc / Tim cọc", 140, "center"),
+            ("status", "Trạng thái thi công hiện trường", 360, "w"),
+        ]
+
+        for col_id, col_text, col_w, col_anchor in col_defs:
+            self.tree.heading(col_id, text=col_text, command=lambda c=col_id: self._sort_tree(c))
+            self.tree.column(col_id, width=col_w, minwidth=50, anchor=col_anchor)
+
+        # Xóa dữ liệu cũ
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Truy vấn DB
+        piles = self.db.search_piles(keyword=keyword, latest_only=latest_only, limit=300)
+        self.current_piles = piles
+
+        for idx, p in enumerate(piles, 1):
+            tag = "evenrow" if idx % 2 == 0 else "oddrow"
+            row_values = (
+                idx,
+                p.get("report_date", "-"),
+                p.get("shift_name", "-"),
+                p.get("contractor_name", "-"),
+                p.get("location", "-"),
+                p.get("pile_id", "-"),
+                p.get("status", "-"),
+            )
+            self.tree.insert("", "end", iid=f"pile_{p.get('id')}_{p.get('report_id')}", values=row_values, tags=(tag,))
+
+        count = len(piles)
+        mode_text = "Hiện trạng mới nhất" if latest_only else "Lịch sử ghi nhận"
+        self.lbl_search_summary.config(
+            text=f"📍 Tìm thấy: {count} tim cọc hiện trường [{mode_text}]"
+        )
+
+    def _sort_tree(self, col):
+        """Sắp xếp cột khi nhấp vào tiêu đề."""
+        if self.sort_column == col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_reverse = False
+            self.sort_column = col
+
+        l = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
+        
+        # Thử ép kiểu số nếu có thể
+        try:
+            l.sort(key=lambda t: float(t[0].replace("%", "").replace(",", "")), reverse=self.sort_reverse)
+        except ValueError:
+            l.sort(reverse=self.sort_reverse)
+
+        for index, (val, k) in enumerate(l):
+            self.tree.move(k, "", index)
+
+    def _export_search_excel(self):
+        """Xuất dữ liệu đang lọc ra file Excel và mở ngay."""
+        keyword = self.entry_keyword.get().strip()
+        cat = self.combo_filter_cat.get()
+        filter_summary = f"Từ khóa: '{keyword or 'Tất cả'}' | Hạng mục: '{cat}'"
+
+        if not self.current_items and not self.current_piles:
+            messagebox.showwarning("Thông báo", "Không có dữ liệu để xuất Excel!")
+            return
+
+        try:
+            path = self.excel_syncer.export_search_results(
+                items=self.current_items,
+                piles=self.current_piles,
+                filter_summary=filter_summary
+            )
+            self._log(f"📑 Đã xuất kết quả lọc ra file Excel: {path}")
+            if messagebox.askyesno("Thành công", f"Đã xuất dữ liệu lọc ra Excel thành công!\nĐường dẫn: {path}\n\nBạn có muốn mở file Excel ngay không?"):
+                os.startfile(str(path))
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể xuất file Excel: {e}")
+
+    def _view_selected_detail(self):
+        """Xem chi tiết đầy đủ của báo cáo được chọn."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showinfo("Hướng dẫn", "Vui lòng chọn một dòng trên bảng để xem chi tiết báo cáo.")
+            return
+
+        iid = selected[0]
+        parts = iid.split("_")
+        if len(parts) < 3:
+            return
+        report_id = int(parts[2])
+
+        rep = self.db.get_report_detail(report_id)
+        if not rep:
+            messagebox.showwarning("Thông báo", "Không tìm thấy chi tiết báo cáo này trong CSDL.")
+            return
+
+        # Mở cửa sổ popup chi tiết
+        detail_win = tk.Toplevel(self.root)
+        detail_win.title(f"📄 Chi Tiết Báo Cáo Ca #{report_id} — {rep.get('contractor_name', 'Dự án')}")
+        detail_win.geometry("760x600")
+        detail_win.minsize(680, 500)
+        detail_win.configure(bg="#F4F6F8")
+
+        # Header Box
+        h_box = tk.Frame(detail_win, bg="#1F4E79", padx=16, pady=12)
+        h_box.pack(fill="x")
+
+        tk.Label(
+            h_box,
+            text=f"BÁO CÁO THI CÔNG #{report_id} — NGÀY {rep.get('report_date')} ({rep.get('shift_name')})",
+            font=("Segoe UI", 12, "bold"),
+            bg="#1F4E79",
+            fg="#FFFFFF"
+        ).pack(anchor="w")
+
+        info_text = f"Nhà thầu: {rep.get('contractor_name')} | Người báo cáo: {rep.get('reporter_name', 'Kỹ sư')} | Thời gian nạp: {rep.get('created_at')}"
+        tk.Label(h_box, text=info_text, font=("Segoe UI", 9), bg="#1F4E79", fg="#D9E1F2").pack(anchor="w", pady=(2, 0))
+
+        # Nội dung gốc từ Zalo
+        txt_box = tk.LabelFrame(detail_win, text=" 💬 Nội dung tin nhắn gốc từ Zalo ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=10, pady=8)
+        txt_box.pack(fill="both", expand=True, padx=14, pady=8)
+
+        st = scrolledtext.ScrolledText(txt_box, font=("Consolas", 10), bg="#FFFFFF", fg="#1E293B", wrap="word")
+        st.pack(fill="both", expand=True)
+        raw_content = rep.get("raw_text") or "Không có văn bản gốc."
+        st.insert(tk.END, raw_content)
+        st.config(state="disabled")
+
+        # Nút đóng
+        btn_close = tk.Button(detail_win, text="Đóng cửa sổ", font=("Segoe UI", 9, "bold"), bg="#4B5563", fg="#FFFFFF", padx=16, pady=6, command=detail_win.destroy)
+        btn_close.pack(pady=8)
+
+    # ---------------- Các hàm nền tảng & Zalo ----------------
     def _log(self, text: str):
         now_str = time.strftime("%H:%M:%S")
         self.txt_log.insert(tk.END, f"[{now_str}] {text}\n")
@@ -247,9 +700,7 @@ class DataBossControlApp:
                     for g in data:
                         items.append(f"{g.get('name')} (ID: {g.get('groupId')})")
                     self.combo_group["values"] = items
-                    
-                    # Tìm xem có nhóm PMU hay không để đặt mặc định
-                    pmu_match = next((i for i in items if "PMU" in i.upper() or "OLP" in i.upper()), None)
+                    pmu_match = next((i for i in items if "PMU" in i.upper() or "OLP" in i.upper() or "307" in i.upper()), None)
                     if pmu_match:
                         self.combo_group.set(pmu_match)
                     else:
@@ -261,7 +712,6 @@ class DataBossControlApp:
 
     def _toggle_bot(self):
         if not self.bot_running:
-            # Bật Bot
             selected = self.combo_group.get()
             self.bot_running = True
             self.btn_toggle_bot.config(
@@ -275,7 +725,6 @@ class DataBossControlApp:
             self.bot_thread = threading.Thread(target=self._bot_polling_loop, args=(selected,), daemon=True)
             self.bot_thread.start()
         else:
-            # Dừng Bot
             self.bot_running = False
             self.btn_toggle_bot.config(
                 text="▶️ BẬT BOT GIÁM SÁT (BẮT ĐẦU LỌC BÁO CÁO)",
@@ -286,7 +735,6 @@ class DataBossControlApp:
             self._log("⏹️ Đã dừng giám sát bot.")
 
     def _bot_polling_loop(self, selected_group: str):
-        # Xác định target group id
         target_threads = []
         if "[TẤT CẢ" in selected_group or not selected_group:
             for g in self.groups_data:
@@ -294,7 +742,6 @@ class DataBossControlApp:
                 if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS", "HỒ SƠ"]):
                     target_threads.append((g.get("groupId"), g_name))
         else:
-            # Tách ID
             for g in self.groups_data:
                 if str(g.get("groupId")) in selected_group or g.get("name") in selected_group:
                     target_threads.append((g.get("groupId"), g.get("name")))
@@ -318,11 +765,12 @@ class DataBossControlApp:
                                 self._log(f"📊 [BÁO CÁO CA MỚI] Nhận từ @{sname} tại nhóm [{tname}]")
                                 res = self.brain.process_incoming_report(content, sender_name=sname, project_name=tname)
                                 self._log(f"   ➔ Đã nạp #{res['report_id']} | Lũy kế đã cập nhật vào Excel & Web.")
-                                # Gửi phản hồi Zalo
                                 self.bridge.send_message(res["reply_text"], thread_id=tid)
-                                # Tự động push GitHub
                                 auto_push_to_github(f"Auto-update: Báo cáo ca từ {sname} [{tname}]")
                                 self._log("   ➔ ✅ Đã đồng bộ trực tuyến lên GitHub Pages!")
+                                # Tự động làm mới bộ lọc và bảng tìm kiếm
+                                self.root.after(0, self._refresh_filter_categories)
+                                self.root.after(0, self._do_search)
                             self.listener.processed_msg_ids.add(str(mid))
                 except Exception:
                     pass
@@ -367,7 +815,9 @@ class DataBossControlApp:
         self._log(f"✅ ĐÃ NẠP THÀNH CÔNG BÁO CÁO #{res['report_id']}!")
         self._log(f"   • Ép cừ: 246/280 (87.9%) | Cọc Casing: 20/132 (15.2%) | Cọc khoan nhồi: 14/106 (13.2%)")
         self._log(f"   • Đã cập nhật CSDL, Excel & Bảng điều hành HTML.")
-        messagebox.showinfo("Thành công", "Đã nạp báo cáo mẫu thành công!\nSố liệu đã được tính toán và cập nhật vào Excel & Web.")
+        self._refresh_filter_categories()
+        self._do_search()
+        messagebox.showinfo("Thành công", "Đã nạp báo cáo mẫu thành công!\nSố liệu đã được tính toán và cập nhật vào Excel, Web & Bảng tìm kiếm.")
 
     def _manual_git_sync(self):
         self._log("🔄 Đang thực hiện Git Push lên GitHub Pages...")
@@ -380,10 +830,12 @@ class DataBossControlApp:
                 self._log("⚠️ Không có thay đổi mới hoặc lỗi push.")
         threading.Thread(target=worker, daemon=True).start()
 
+
 def run_app():
     root = tk.Tk()
     app = DataBossControlApp(root)
     root.mainloop()
+
 
 if __name__ == "__main__":
     run_app()
