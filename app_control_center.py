@@ -851,7 +851,19 @@ class DataBossControlApp:
                 try:
                     p = Path(file_path)
                     content = ""
-                    if p.suffix.lower() == ".txt":
+                    if ".zl" in p.name.lower():
+                        messagebox.showwarning(
+                            "Định dạng sao lưu Zalo (.zl)",
+                            f"File '{p.name}' là bản sao lưu mã hóa toàn bộ tài khoản Zalo của VNG (dung lượng lớn tới ~26GB gồm cả ảnh, video, dữ liệu riêng tư).\n\n"
+                            "Máy chủ Zalo mã hóa độc quyền file này nên phần mềm ngoài không thể giải mã trực tiếp.\n\n"
+                            "👉 CÁCH LẤY NHANH TIN NHẮN NHÓM 307 (Chỉ mất 10 giây):\n"
+                            "1. Trên Zalo PC, mở nhóm 307 HỒ SƠ SẠT LỞ.\n"
+                            "2. Chuột phải vào tin nhắn -> 'Chọn nhiều tin nhắn' -> Tick các báo cáo cũ -> Bấm 'Sao chép'.\n"
+                            "3. Bấm chuột vào ô màu trắng bên dưới -> Bấm Ctrl+V để Dán -> Bấm '🚀 BÓC TÁCH & NẠP'!",
+                            parent=win
+                        )
+                        return
+                    elif p.suffix.lower() == ".txt":
                         content = p.read_text(encoding="utf-8", errors="ignore")
                     elif p.suffix.lower() == ".json":
                         import json
@@ -866,8 +878,12 @@ class DataBossControlApp:
                             content = str(data)
                     elif p.suffix.lower() == ".zip":
                         import zipfile
+                        if not zipfile.is_zipfile(file_path):
+                            raise ValueError(f"File '{p.name}' không phải định dạng ZIP tiêu chuẩn (đây là file sao lưu mã hóa .zl đổi tên).")
                         with zipfile.ZipFile(file_path, 'r') as z:
-                            txt_names = [n for n in z.namelist() if n.endswith(('.txt', '.json'))]
+                            txt_names = [n for n in z.namelist() if n.endswith(('.txt', '.json', '.csv'))]
+                            if not txt_names:
+                                raise ValueError("Trong file Zip không tìm thấy file văn bản .txt hoặc .json nào chứa tin nhắn.")
                             all_parts = []
                             for n in txt_names:
                                 with z.open(n) as f:
