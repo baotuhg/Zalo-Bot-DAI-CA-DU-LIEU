@@ -30,8 +30,8 @@ class DataBossControlApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("🏗️ BẢNG ĐIỀU KHIỂN & TRA CỨU DỮ LIỆU — ĐẠI CA DỮ LIỆU (CONTECH ZALO)")
-        self.root.geometry("1000x740")
-        self.root.minsize(860, 620)
+        self.root.geometry("1020x750")
+        self.root.minsize(880, 640)
         self.root.configure(bg="#F4F6F8")
 
         # Khởi tạo lõi hệ thống
@@ -139,9 +139,28 @@ class DataBossControlApp:
 
         tk.Label(row_group, text="Nhóm Zalo cần lọc báo cáo:", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
 
-        self.combo_group = ttk.Combobox(row_group, font=("Segoe UI", 10), state="readonly", width=42)
+        self.combo_group = ttk.Combobox(row_group, font=("Segoe UI", 10), state="readonly", width=36)
         self.combo_group.pack(side="left", padx=10, fill="x", expand=True)
         self.combo_group.set("Đang tải danh sách nhóm...")
+        self.combo_group.bind("<<ComboboxSelected>>", self._on_group_selected)
+
+        # Nút Quét ngay dữ liệu nhóm
+        btn_scan_now = tk.Button(
+            row_group,
+            text="📥 QUÉT NGAY NHÓM NÀY",
+            font=("Segoe UI", 9, "bold"),
+            bg="#1F4E79",
+            fg="#FFFFFF",
+            activebackground="#153654",
+            activeforeground="#FFFFFF",
+            relief="raised",
+            bd=2,
+            padx=10,
+            pady=2,
+            cursor="hand2",
+            command=self._scan_current_group_now
+        )
+        btn_scan_now.pack(side="left", padx=4)
 
         btn_refresh_groups = ttk.Button(row_group, text="🔄 Tải lại nhóm", command=self._load_zalo_groups)
         btn_refresh_groups.pack(side="left", padx=4)
@@ -177,21 +196,37 @@ class DataBossControlApp:
         btn_grid = tk.Frame(action_frame, bg="#F4F6F8")
         btn_grid.pack(fill="x")
 
-        # NÚT ĐẶC BIỆT: TÌM KIẾM & LỌC DỮ LIỆU
+        # NÚT ĐẶC BIỆT 1: TÌM KIẾM & LỌC DỮ LIỆU
         btn_goto_search = tk.Button(
             btn_grid,
             text="🔍 TÌM KIẾM & LỌC DỮ LIỆU",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#0284C7",
             fg="#FFFFFF",
-            padx=10,
+            padx=6,
             pady=8,
             cursor="hand2",
             relief="raised",
             bd=2,
             command=self._switch_to_search_tab
         )
-        btn_goto_search.grid(row=0, column=0, padx=4, pady=4, sticky="nsew")
+        btn_goto_search.grid(row=0, column=0, padx=3, pady=4, sticky="nsew")
+
+        # NÚT ĐẶC BIỆT 2: DÁN NHANH BÁO CÁO (COPY & PASTE TỪ ZALO)
+        btn_quick_paste = tk.Button(
+            btn_grid,
+            text="📋 DÁN NHANH BÁO CÁO",
+            font=("Segoe UI", 9, "bold"),
+            bg="#D97706",
+            fg="#FFFFFF",
+            padx=6,
+            pady=8,
+            cursor="hand2",
+            relief="raised",
+            bd=2,
+            command=self._quick_paste_report_dialog
+        )
+        btn_quick_paste.grid(row=0, column=1, padx=3, pady=4, sticky="nsew")
 
         # Nút Mở Web Dashboard
         btn_web = tk.Button(
@@ -200,13 +235,13 @@ class DataBossControlApp:
             font=("Segoe UI", 9, "bold"),
             bg="#1F4E79",
             fg="#FFFFFF",
-            padx=8,
+            padx=6,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._open_web_dashboard
         )
-        btn_web.grid(row=0, column=1, padx=4, pady=4, sticky="nsew")
+        btn_web.grid(row=0, column=2, padx=3, pady=4, sticky="nsew")
 
         # Nút Mở Excel
         btn_excel = tk.Button(
@@ -215,28 +250,28 @@ class DataBossControlApp:
             font=("Segoe UI", 9, "bold"),
             bg="#2E7A48",
             fg="#FFFFFF",
-            padx=8,
+            padx=6,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._open_excel
         )
-        btn_excel.grid(row=0, column=2, padx=4, pady=4, sticky="nsew")
+        btn_excel.grid(row=0, column=3, padx=3, pady=4, sticky="nsew")
 
         # Nút Nạp thử báo cáo mẫu
         btn_sample = tk.Button(
             btn_grid,
             text="🧪 NẠP BÁO CÁO MẪU",
             font=("Segoe UI", 9, "bold"),
-            bg="#C98407",
+            bg="#7C3AED",
             fg="#FFFFFF",
-            padx=8,
+            padx=6,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._feed_sample_report
         )
-        btn_sample.grid(row=0, column=3, padx=4, pady=4, sticky="nsew")
+        btn_sample.grid(row=0, column=4, padx=3, pady=4, sticky="nsew")
 
         # Nút Đồng bộ Git
         btn_git = tk.Button(
@@ -245,15 +280,15 @@ class DataBossControlApp:
             font=("Segoe UI", 9, "bold"),
             bg="#4B5563",
             fg="#FFFFFF",
-            padx=8,
+            padx=6,
             pady=8,
             cursor="hand2",
             relief="groove",
             command=self._manual_git_sync
         )
-        btn_git.grid(row=0, column=4, padx=4, pady=4, sticky="nsew")
+        btn_git.grid(row=0, column=5, padx=3, pady=4, sticky="nsew")
 
-        for c in range(5):
+        for c in range(6):
             btn_grid.columnconfigure(c, weight=1)
 
         # 3. Live Log Window
@@ -445,7 +480,6 @@ class DataBossControlApp:
         self._do_search()
 
     def _search_and_show_items(self, keyword: str, category: str, latest_only: bool):
-        # 1. Cấu hình cột cho Hạng mục WBS
         columns = ("stt", "date", "shift", "contractor", "category", "sub_item", "unit", "shift_qty", "accumulated_qty", "design_qty", "rate", "status_note")
         self.tree["columns"] = columns
         self.tree["show"] = "headings"
@@ -469,11 +503,9 @@ class DataBossControlApp:
             self.tree.heading(col_id, text=col_text, command=lambda c=col_id: self._sort_tree(c))
             self.tree.column(col_id, width=col_w, minwidth=40, anchor=col_anchor)
 
-        # Xóa dữ liệu cũ
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Truy vấn DB
         items = self.db.search_progress_items(keyword=keyword, category=category, latest_only=latest_only, limit=300)
         self.current_items = items
 
@@ -511,10 +543,8 @@ class DataBossControlApp:
                 str_rate,
                 it.get("status_note", "-"),
             )
-            # Lưu report_id vào item id để xem chi tiết
             self.tree.insert("", "end", iid=f"item_{it.get('id')}_{it.get('report_id')}", values=row_values, tags=(tag,))
 
-        # Cập nhật thanh tóm tắt
         count = len(items)
         avg_pct = (total_pct / count) if count > 0 else 0.0
         mode_text = "Mới nhất" if latest_only else "Toàn bộ lịch sử"
@@ -523,7 +553,6 @@ class DataBossControlApp:
         )
 
     def _search_and_show_piles(self, keyword: str, latest_only: bool):
-        # 1. Cấu hình cột cho Tim Cọc
         columns = ("stt", "date", "shift", "contractor", "location", "pile_id", "status")
         self.tree["columns"] = columns
         self.tree["show"] = "headings"
@@ -542,11 +571,9 @@ class DataBossControlApp:
             self.tree.heading(col_id, text=col_text, command=lambda c=col_id: self._sort_tree(c))
             self.tree.column(col_id, width=col_w, minwidth=50, anchor=col_anchor)
 
-        # Xóa dữ liệu cũ
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Truy vấn DB
         piles = self.db.search_piles(keyword=keyword, latest_only=latest_only, limit=300)
         self.current_piles = piles
 
@@ -570,7 +597,6 @@ class DataBossControlApp:
         )
 
     def _sort_tree(self, col):
-        """Sắp xếp cột khi nhấp vào tiêu đề."""
         if self.sort_column == col:
             self.sort_reverse = not self.sort_reverse
         else:
@@ -578,8 +604,6 @@ class DataBossControlApp:
             self.sort_column = col
 
         l = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
-        
-        # Thử ép kiểu số nếu có thể
         try:
             l.sort(key=lambda t: float(t[0].replace("%", "").replace(",", "")), reverse=self.sort_reverse)
         except ValueError:
@@ -589,7 +613,6 @@ class DataBossControlApp:
             self.tree.move(k, "", index)
 
     def _export_search_excel(self):
-        """Xuất dữ liệu đang lọc ra file Excel và mở ngay."""
         keyword = self.entry_keyword.get().strip()
         cat = self.combo_filter_cat.get()
         filter_summary = f"Từ khóa: '{keyword or 'Tất cả'}' | Hạng mục: '{cat}'"
@@ -611,7 +634,6 @@ class DataBossControlApp:
             messagebox.showerror("Lỗi", f"Không thể xuất file Excel: {e}")
 
     def _view_selected_detail(self):
-        """Xem chi tiết đầy đủ của báo cáo được chọn."""
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo("Hướng dẫn", "Vui lòng chọn một dòng trên bảng để xem chi tiết báo cáo.")
@@ -628,14 +650,12 @@ class DataBossControlApp:
             messagebox.showwarning("Thông báo", "Không tìm thấy chi tiết báo cáo này trong CSDL.")
             return
 
-        # Mở cửa sổ popup chi tiết
         detail_win = tk.Toplevel(self.root)
         detail_win.title(f"📄 Chi Tiết Báo Cáo Ca #{report_id} — {rep.get('contractor_name', 'Dự án')}")
         detail_win.geometry("760x600")
         detail_win.minsize(680, 500)
         detail_win.configure(bg="#F4F6F8")
 
-        # Header Box
         h_box = tk.Frame(detail_win, bg="#1F4E79", padx=16, pady=12)
         h_box.pack(fill="x")
 
@@ -650,7 +670,6 @@ class DataBossControlApp:
         info_text = f"Nhà thầu: {rep.get('contractor_name')} | Người báo cáo: {rep.get('reporter_name', 'Kỹ sư')} | Thời gian nạp: {rep.get('created_at')}"
         tk.Label(h_box, text=info_text, font=("Segoe UI", 9), bg="#1F4E79", fg="#D9E1F2").pack(anchor="w", pady=(2, 0))
 
-        # Nội dung gốc từ Zalo
         txt_box = tk.LabelFrame(detail_win, text=" 💬 Nội dung tin nhắn gốc từ Zalo ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=10, pady=8)
         txt_box.pack(fill="both", expand=True, padx=14, pady=8)
 
@@ -660,9 +679,192 @@ class DataBossControlApp:
         st.insert(tk.END, raw_content)
         st.config(state="disabled")
 
-        # Nút đóng
         btn_close = tk.Button(detail_win, text="Đóng cửa sổ", font=("Segoe UI", 9, "bold"), bg="#4B5563", fg="#FFFFFF", padx=16, pady=6, command=detail_win.destroy)
         btn_close.pack(pady=8)
+
+    # ---------------- Quét dữ liệu nhóm & Nhập nhanh ----------------
+    def _on_group_selected(self, event=None):
+        """Khi người dùng chọn một nhóm khác trên Combobox."""
+        selected = self.combo_group.get()
+        self._log(f"🎯 Đã chọn nhóm mục tiêu: {selected}")
+        # Tự động quét kiểm tra nhóm vừa chọn
+        self._scan_current_group_now(silent_if_empty=True)
+
+    def _get_selected_group_info(self):
+        """Lấy (thread_id, group_name) từ Combobox hiện tại."""
+        selected = self.combo_group.get()
+        if "[TẤT CẢ" in selected or not selected or "Đang tải" in selected:
+            return None, "TẤT CẢ CÁC NHÓM"
+
+        # Trích xuất group_id
+        for g in self.groups_data:
+            gid = str(g.get("groupId"))
+            gname = g.get("name", "")
+            if gid in selected or gname in selected:
+                return gid, gname
+
+        # Nếu không thấy trong cache, parse ID từ text
+        if "(ID: " in selected:
+            gid = selected.split("(ID: ")[1].rstrip(")")
+            gname = selected.split(" (ID:")[0]
+            return gid, gname
+
+        return None, selected
+
+    def _scan_current_group_now(self, silent_if_empty=False):
+        """Quét và phân tích ngay các tin nhắn hiện có của nhóm này."""
+        thread_id, group_name = self._get_selected_group_info()
+        self._log(f"🔍 Bắt đầu quét tin nhắn hiện có trong nhóm [{group_name}]...")
+
+        found_msgs = []
+        daemon_db = Path(r"C:\Users\baotu\.zalo-personal-mcp\zalo.db")
+        if daemon_db.exists():
+            try:
+                import sqlite3
+                conn = sqlite3.connect(str(daemon_db))
+                cur = conn.cursor()
+                if not thread_id:
+                    cur.execute("SELECT id, thread_id, msg_id, sender_name, content, timestamp FROM messages WHERE length(content) > 10 ORDER BY id DESC LIMIT 200")
+                else:
+                    cur.execute("SELECT id, thread_id, msg_id, sender_name, content, timestamp FROM messages WHERE thread_id = ? AND length(content) > 10 ORDER BY id DESC LIMIT 200", (str(thread_id),))
+                found_msgs = cur.fetchall()
+                conn.close()
+            except Exception as e:
+                self._log(f"⚠️ Lỗi đọc bộ đệm tin nhắn: {e}")
+
+        # Thử lấy qua bridge nếu SQLite chưa có
+        if not found_msgs and thread_id:
+            try:
+                msgs = self.bridge.get_recent_messages(thread_id=thread_id, count=50)
+                found_msgs = [(0, thread_id, m.get("msgId"), m.get("senderName"), m.get("content"), m.get("timestamp")) for m in msgs if m.get("content")]
+            except Exception:
+                pass
+
+        if not found_msgs:
+            self._log(f"ℹ️ Nhóm [{group_name}] hiện chưa có tin nhắn nào trong bộ nhớ Zalo gần đây.")
+            self._log("💡 HƯỚNG DẪN ĐỂ LẤY DỮ LIỆU:")
+            self._log("   👉 Cách 1 (Nhanh nhất): Copy tin nhắn báo cáo từ Zalo và bấm nút '📋 DÁN NHANH BÁO CÁO' để nạp ngay!")
+            self._log("   👉 Cách 2: Gửi/chuyển tiếp tin nhắn báo cáo vào nhóm trên Zalo, Bot đang chạy sẽ tự động bắt và lọc tức thì.")
+            if not silent_if_empty:
+                messagebox.showinfo(
+                    "Thông báo quét nhóm",
+                    f"Nhóm [{group_name}] hiện chưa có tin nhắn báo cáo nào được ghi nhận gần đây.\n\n"
+                    "💡 Bạn có thể:\n"
+                    "1. Copy tin nhắn báo cáo từ Zalo rồi bấm nút '📋 DÁN NHANH BÁO CÁO' để nạp ngay!\n"
+                    "2. Hoặc gửi/chuyển tiếp tin nhắn vào nhóm trên Zalo, Bot sẽ tự động chụp và phân tích ngay."
+                )
+            return
+
+        self._log(f"🔎 Đã tìm thấy {len(found_msgs)} tin nhắn trong nhóm. Đang kiểm tra cấu trúc báo cáo thi công...")
+        imported_count = 0
+        for row in reversed(found_msgs):
+            _, tid, mid, sname, content, _ = row
+            sname = sname or "Kỹ sư"
+            if content and self.parser.is_construction_report(content):
+                if str(mid) not in self.listener.processed_msg_ids:
+                    self._log(f"📊 [BÁO CÁO CA MỚI] Nhận từ @{sname}")
+                    res = self.brain.process_incoming_report(content, sender_name=sname, project_name=group_name)
+                    self._log(f"   ➔ Đã nạp thành công #{res['report_id']} vào CSDL & Excel sống!")
+                    self.listener.processed_msg_ids.add(str(mid))
+                    imported_count += 1
+
+        if imported_count > 0:
+            auto_push_to_github(f"Auto-update: Quét nạp {imported_count} báo cáo từ nhóm [{group_name}]")
+            self._log(f"✅ ĐÃ NẠP THÀNH CÔNG {imported_count} BÁO CÁO TỪ NHÓM [{group_name}]!")
+            self._refresh_filter_categories()
+            self._do_search()
+            messagebox.showinfo("Thành công", f"Đã quét và nạp thành công {imported_count} báo cáo thi công từ nhóm [{group_name}]!\nSố liệu đã được đồng bộ vào CSDL, Excel & Web.")
+        else:
+            self._log(f"ℹ️ Trong {len(found_msgs)} tin nhắn đã quét, chưa có tin nào mang cấu trúc báo cáo thi công (Ca này/Lũy kế/Tổng TK).")
+            self._log("🟢 Bot tiếp tục thường trực: Khi có tin nhắn báo cáo mới gửi vào nhóm, hệ thống sẽ tự động lọc ngay.")
+            if not silent_if_empty:
+                messagebox.showinfo("Kết quả quét", f"Đã quét {len(found_msgs)} tin nhắn trong nhóm [{group_name}], nhưng không có tin nhắn nào dạng báo cáo thi công.\n\nBạn có thể dùng nút '📋 DÁN NHANH BÁO CÁO' để nạp trực tiếp.")
+
+    def _quick_paste_report_dialog(self):
+        """Mở cửa sổ cho phép người dùng dán (Ctrl+V) tin nhắn báo cáo từ Zalo vào nạp ngay lập tức."""
+        win = tk.Toplevel(self.root)
+        win.title("📋 Dán Nhanh Báo Cáo Thi Công Từ Zalo")
+        win.geometry("680x580")
+        win.minsize(580, 480)
+        win.configure(bg="#F4F6F8")
+
+        # Header Box
+        h_box = tk.Frame(win, bg="#0E6655", padx=16, pady=12)
+        h_box.pack(fill="x")
+        tk.Label(h_box, text="📋 NHẬP NHANH BÁO CÁO THI CÔNG TỪ ZALO", font=("Segoe UI", 12, "bold"), bg="#0E6655", fg="#FFFFFF").pack(anchor="w")
+        tk.Label(h_box, text="Copy tin nhắn báo cáo từ Zalo và Dán (Ctrl+V) vào đây để Bot bóc tách ngay lập tức!", font=("Segoe UI", 9), bg="#0E6655", fg="#D1F2EB").pack(anchor="w", pady=(2, 0))
+
+        # Project name selection
+        body = tk.Frame(win, bg="#F4F6F8", padx=16, pady=10)
+        body.pack(fill="both", expand=True)
+
+        row_p = tk.Frame(body, bg="#F4F6F8")
+        row_p.pack(fill="x", pady=(0, 8))
+        tk.Label(row_p, text="Tên Dự án / Gói thầu / Nhóm:", font=("Segoe UI", 9, "bold"), bg="#F4F6F8").pack(side="left")
+
+        current_g = self.combo_group.get()
+        g_name = current_g.split(" (ID:")[0].replace("[TẤT CẢ CÁC NHÓM CÔNG TRƯỜNG TỰ ĐỘNG]", "PMU: BĂNG HẠ TẦNG OLP").strip()
+        entry_proj = ttk.Entry(row_p, font=("Segoe UI", 10), width=35)
+        entry_proj.pack(side="left", padx=8, fill="x", expand=True)
+        entry_proj.insert(0, g_name or "PMU: BĂNG HẠ TẦNG OLP")
+
+        tk.Label(body, text="Nội dung tin nhắn báo cáo Zalo (Ctrl + V để dán):", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(anchor="w", pady=(4, 2))
+
+        txt_input = scrolledtext.ScrolledText(body, font=("Consolas", 10), bg="#FFFFFF", fg="#1E293B", wrap="word", relief="groove", bd=1)
+        txt_input.pack(fill="both", expand=True, pady=(2, 10))
+        txt_input.focus_set()
+
+        def do_import():
+            raw_text = txt_input.get("1.0", tk.END).strip()
+            if not raw_text:
+                messagebox.showwarning("Thông báo", "Vui lòng dán nội dung tin nhắn báo cáo vào ô văn bản trước nhé!", parent=win)
+                return
+
+            proj = entry_proj.get().strip() or "PMU: BĂNG HẠ TẦNG OLP"
+            self._log(f"📥 Đang bóc tách báo cáo nhập tay cho dự án: [{proj}]...")
+            try:
+                res = self.brain.process_incoming_report(raw_text, sender_name="Kỹ sư (Nhập nhanh)", project_name=proj)
+                self._log(f"✅ ĐÃ NẠP THÀNH CÔNG BÁO CÁO #{res['report_id']}!")
+                self._log(f"   • Đã cập nhật vào CSDL, Excel & Bảng điều hành HTML.")
+                auto_push_to_github(f"Import: Báo cáo nhập nhanh cho [{proj}]")
+                self._log("   • Đã đồng bộ trực tuyến lên GitHub Pages.")
+                self._refresh_filter_categories()
+                self._do_search()
+                messagebox.showinfo("Thành công", f"Đã nạp thành công Báo cáo #{res['report_id']}!\nSố liệu đã được tính toán và cập nhật vào CSDL, Excel & Web.", parent=win)
+                win.destroy()
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể xử lý báo cáo: {e}", parent=win)
+
+        btn_box = tk.Frame(body, bg="#F4F6F8")
+        btn_box.pack(fill="x")
+
+        btn_submit = tk.Button(
+            btn_box,
+            text="🚀 BÓC TÁCH & NẠP VÀO HỆ THỐNG NGAY",
+            font=("Segoe UI", 10, "bold"),
+            bg="#0E6655",
+            fg="#FFFFFF",
+            padx=16,
+            pady=8,
+            cursor="hand2",
+            relief="raised",
+            command=do_import
+        )
+        btn_submit.pack(side="left")
+
+        btn_cancel = tk.Button(
+            btn_box,
+            text="Hủy bỏ",
+            font=("Segoe UI", 9),
+            bg="#E2E8F0",
+            fg="#1E293B",
+            padx=14,
+            pady=8,
+            cursor="hand2",
+            relief="flat",
+            command=win.destroy
+        )
+        btn_cancel.pack(side="right")
 
     # ---------------- Các hàm nền tảng & Zalo ----------------
     def _log(self, text: str):
@@ -721,8 +923,12 @@ class DataBossControlApp:
             )
             self.lbl_bot_state.config(text="🟢 Bot Đang Chạy Lọc Báo Cáo", fg="#2E7A48")
             self._log(f"🚀 KÍCH HOẠT BOT THÀNH CÔNG! Mục tiêu: {selected}")
+            self._log("🟢 Bot đang thường trực: Khi có tin nhắn báo cáo gửi vào nhóm trên Zalo, Bot sẽ tự động chụp và lọc ngay!")
 
-            self.bot_thread = threading.Thread(target=self._bot_polling_loop, args=(selected,), daemon=True)
+            # Quét kiểm tra ngay các tin có sẵn
+            threading.Thread(target=lambda: self._scan_current_group_now(silent_if_empty=True), daemon=True).start()
+
+            self.bot_thread = threading.Thread(target=self._bot_polling_loop, daemon=True)
             self.bot_thread.start()
         else:
             self.bot_running = False
@@ -734,23 +940,32 @@ class DataBossControlApp:
             self.lbl_bot_state.config(text="⚪ Bot đã Dừng", fg="#5A6A80")
             self._log("⏹️ Đã dừng giám sát bot.")
 
-    def _bot_polling_loop(self, selected_group: str):
-        target_threads = []
-        if "[TẤT CẢ" in selected_group or not selected_group:
-            for g in self.groups_data:
-                g_name = g.get("name", "")
-                if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS", "HỒ SƠ"]):
-                    target_threads.append((g.get("groupId"), g_name))
-        else:
-            for g in self.groups_data:
-                if str(g.get("groupId")) in selected_group or g.get("name") in selected_group:
-                    target_threads.append((g.get("groupId"), g.get("name")))
-                    break
-
-        if not target_threads:
-            target_threads.append((Config.DEFAULT_GROUP_NAME, Config.DEFAULT_GROUP_NAME))
+    def _bot_polling_loop(self):
+        """Vòng lặp lắng nghe tin nhắn Zalo trong thời gian thực, tự động thích ứng khi đổi nhóm."""
+        last_logged_target = ""
 
         while self.bot_running:
+            selected_group = self.combo_group.get()
+
+            # Xác định danh sách target threads
+            target_threads = []
+            if "[TẤT CẢ" in selected_group or not selected_group:
+                for g in self.groups_data:
+                    g_name = g.get("name", "")
+                    if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS", "HỒ SƠ"]):
+                        target_threads.append((str(g.get("groupId")), g_name))
+            else:
+                tid, tname = self._get_selected_group_info()
+                if tid:
+                    target_threads.append((tid, tname))
+
+            if not target_threads:
+                target_threads.append((Config.DEFAULT_GROUP_NAME, Config.DEFAULT_GROUP_NAME))
+
+            current_target_desc = ", ".join(t[1] for t in target_threads[:3])
+            if current_target_desc != last_logged_target:
+                last_logged_target = current_target_desc
+
             for tid, tname in target_threads:
                 if not self.bot_running:
                     break
@@ -768,7 +983,6 @@ class DataBossControlApp:
                                 self.bridge.send_message(res["reply_text"], thread_id=tid)
                                 auto_push_to_github(f"Auto-update: Báo cáo ca từ {sname} [{tname}]")
                                 self._log("   ➔ ✅ Đã đồng bộ trực tuyến lên GitHub Pages!")
-                                # Tự động làm mới bộ lọc và bảng tìm kiếm
                                 self.root.after(0, self._refresh_filter_categories)
                                 self.root.after(0, self._do_search)
                             self.listener.processed_msg_ids.add(str(mid))
