@@ -364,6 +364,7 @@ class ConstructionExcelSyncer:
 
         headers = [
             ("STT", 6),
+            ("DỰ ÁN / NHÓM ZALO", 22),
             ("NGÀY", 12),
             ("CA THI CÔNG", 14),
             ("NHÀ THẦU", 18),
@@ -390,33 +391,34 @@ class ConstructionExcelSyncer:
         for idx, it in enumerate(items, 1):
             ws.row_dimensions[row_idx].height = 20
             ws.cell(row=row_idx, column=1, value=idx).alignment = Alignment(horizontal="center")
-            ws.cell(row=row_idx, column=2, value=it.get("report_date", "-")).alignment = Alignment(horizontal="center")
-            ws.cell(row=row_idx, column=3, value=it.get("shift_name", "-")).alignment = Alignment(horizontal="center")
-            ws.cell(row=row_idx, column=4, value=it.get("contractor_name", "-"))
-            ws.cell(row=row_idx, column=5, value=it.get("category", "-"))
-            ws.cell(row=row_idx, column=6, value=it.get("sub_item", "-"))
-            ws.cell(row=row_idx, column=7, value=it.get("unit", "Cấu kiện")).alignment = Alignment(horizontal="center")
+            ws.cell(row=row_idx, column=2, value=it.get("project_name", "-"))
+            ws.cell(row=row_idx, column=3, value=it.get("report_date", "-")).alignment = Alignment(horizontal="center")
+            ws.cell(row=row_idx, column=4, value=it.get("shift_name", "-")).alignment = Alignment(horizontal="center")
+            ws.cell(row=row_idx, column=5, value=it.get("contractor_name", "-"))
+            ws.cell(row=row_idx, column=6, value=it.get("category", "-"))
+            ws.cell(row=row_idx, column=7, value=it.get("sub_item", "-"))
+            ws.cell(row=row_idx, column=8, value=it.get("unit", "Cấu kiện")).alignment = Alignment(horizontal="center")
             
-            c_shift = ws.cell(row=row_idx, column=8, value=it.get("shift_qty", 0))
+            c_shift = ws.cell(row=row_idx, column=9, value=it.get("shift_qty", 0))
             c_shift.number_format = '#,##0.00' if isinstance(it.get("shift_qty"), float) and not it.get("shift_qty").is_integer() else '#,##0'
             c_shift.alignment = Alignment(horizontal="right")
 
-            c_acc = ws.cell(row=row_idx, column=9, value=it.get("accumulated_qty", 0))
+            c_acc = ws.cell(row=row_idx, column=10, value=it.get("accumulated_qty", 0))
             c_acc.number_format = '#,##0.00' if isinstance(it.get("accumulated_qty"), float) and not it.get("accumulated_qty").is_integer() else '#,##0'
             c_acc.alignment = Alignment(horizontal="right")
 
-            c_des = ws.cell(row=row_idx, column=10, value=it.get("design_qty", 0))
+            c_des = ws.cell(row=row_idx, column=11, value=it.get("design_qty", 0))
             c_des.number_format = '#,##0.00' if isinstance(it.get("design_qty"), float) and not it.get("design_qty").is_integer() else '#,##0'
             c_des.alignment = Alignment(horizontal="right")
 
             rate = it.get("completion_rate", 0)
-            c_pct = ws.cell(row=row_idx, column=11, value=rate / 100.0)
+            c_pct = ws.cell(row=row_idx, column=12, value=rate / 100.0)
             c_pct.number_format = '0.0%'
             c_pct.alignment = Alignment(horizontal="right")
 
-            ws.cell(row=row_idx, column=12, value=it.get("status_note", "-"))
+            ws.cell(row=row_idx, column=13, value=it.get("status_note", "-"))
 
-            for c in range(1, 13):
+            for c in range(1, 14):
                 ws.cell(row=row_idx, column=c).border = cell_border
                 ws.cell(row=row_idx, column=c).font = regular_font
             row_idx += 1
@@ -424,7 +426,7 @@ class ConstructionExcelSyncer:
         if piles:
             ws_p = wb.create_sheet(title="Tim cọc lọc")
             ws_p.views.sheetView[0].showGridLines = True
-            p_headers = [("STT", 6), ("NGÀY", 12), ("CA", 14), ("NHÀ THẦU", 18), ("VỊ TRÍ / MỐ TRỤ", 18), ("MÃ HIỆU CỌC", 16), ("TRẠNG THÁI HIỆN TRƯỜNG", 32)]
+            p_headers = [("STT", 6), ("DỰ ÁN / NHÓM ZALO", 22), ("NGÀY", 12), ("CA", 14), ("NHÀ THẦU", 18), ("VỊ TRÍ / MỐ TRỤ", 18), ("MÃ HIỆU CỌC", 16), ("TRẠNG THÁI HIỆN TRƯỜNG", 32)]
             for col_idx, (h_name, width) in enumerate(p_headers, 1):
                 cell = ws_p.cell(row=1, column=col_idx, value=h_name)
                 cell.font = hdr_font
@@ -435,13 +437,14 @@ class ConstructionExcelSyncer:
             for p_idx, p in enumerate(piles, 1):
                 r = p_idx + 1
                 ws_p.cell(row=r, column=1, value=p_idx).alignment = Alignment(horizontal="center")
-                ws_p.cell(row=r, column=2, value=p.get("report_date", "-")).alignment = Alignment(horizontal="center")
-                ws_p.cell(row=r, column=3, value=p.get("shift_name", "-")).alignment = Alignment(horizontal="center")
-                ws_p.cell(row=r, column=4, value=p.get("contractor_name", "-"))
-                ws_p.cell(row=r, column=5, value=p.get("location", "-"))
-                ws_p.cell(row=r, column=6, value=p.get("pile_id", "-")).font = bold_font
-                ws_p.cell(row=r, column=7, value=p.get("status", "-"))
-                for c in range(1, 8):
+                ws_p.cell(row=r, column=2, value=p.get("project_name", "-"))
+                ws_p.cell(row=r, column=3, value=p.get("report_date", "-")).alignment = Alignment(horizontal="center")
+                ws_p.cell(row=r, column=4, value=p.get("shift_name", "-")).alignment = Alignment(horizontal="center")
+                ws_p.cell(row=r, column=5, value=p.get("contractor_name", "-"))
+                ws_p.cell(row=r, column=6, value=p.get("location", "-"))
+                ws_p.cell(row=r, column=7, value=p.get("pile_id", "-")).font = bold_font
+                ws_p.cell(row=r, column=8, value=p.get("status", "-"))
+                for c in range(1, 9):
                     ws_p.cell(row=r, column=c).border = cell_border
                     ws_p.cell(row=r, column=c).font = regular_font
 

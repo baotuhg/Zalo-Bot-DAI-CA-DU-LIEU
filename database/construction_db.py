@@ -289,15 +289,23 @@ class ConstructionDB:
             rows = cursor.fetchall()
             return [row["category"] for row in rows]
 
+    def get_projects(self) -> List[str]:
+        """Lấy danh sách tất cả các dự án / nhóm Zalo có dữ liệu trong DB."""
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT name FROM projects WHERE name IS NOT NULL AND name != '' ORDER BY name")
+            return [row["name"] for row in cursor.fetchall()]
+
     def search_progress_items(
         self,
         keyword: Optional[str] = None,
         category: Optional[str] = None,
+        project_name: Optional[str] = None,
         latest_only: bool = False,
         limit: int = 200
     ) -> List[Dict[str, Any]]:
         """
-        Tìm kiếm và lọc các hạng mục tiến độ theo từ khóa, danh mục, và tùy chọn chỉ lấy mới nhất.
+        Tìm kiếm và lọc các hạng mục tiến độ theo từ khóa, danh mục, dự án, và tùy chọn chỉ lấy mới nhất.
         """
         with self._connection() as conn:
             cursor = conn.cursor()
@@ -306,10 +314,12 @@ class ConstructionDB:
                        p.shift_qty, p.accumulated_qty, p.design_qty,
                        p.completion_rate, p.status_note,
                        r.report_date, r.shift_name, r.reporter_name,
-                       c.name as contractor_name
+                       c.name as contractor_name,
+                       pr.name as project_name
                 FROM progress_items p
                 JOIN shift_reports r ON p.report_id = r.id
                 JOIN contractors c ON r.contractor_id = c.id
+                LEFT JOIN projects pr ON r.project_id = pr.id
             """
             conditions = []
             params = []
@@ -323,6 +333,10 @@ class ConstructionDB:
                     )
                 """)
 
+            if project_name and project_name.strip() and project_name != "[Tất cả nhóm/dự án]":
+                conditions.append("pr.name = ?")
+                params.append(project_name.strip())
+
             if category and category.strip() and category != "[Tất cả hạng mục]":
                 conditions.append("p.category = ?")
                 params.append(category.strip())
@@ -332,9 +346,9 @@ class ConstructionDB:
                 conditions.append("""
                     (p.category LIKE ? OR p.sub_item LIKE ? OR p.status_note LIKE ?
                      OR r.report_date LIKE ? OR r.shift_name LIKE ?
-                     OR r.reporter_name LIKE ? OR c.name LIKE ?)
+                     OR r.reporter_name LIKE ? OR c.name LIKE ? OR pr.name LIKE ?)
                 """)
-                params.extend([kw, kw, kw, kw, kw, kw, kw])
+                params.extend([kw, kw, kw, kw, kw, kw, kw, kw])
 
             if conditions:
                 base_query += " WHERE " + " AND ".join(conditions)
@@ -348,6 +362,7 @@ class ConstructionDB:
     def search_piles(
         self,
         keyword: Optional[str] = None,
+        project_name: Optional[str] = None,
         latest_only: bool = True,
         limit: int = 200
     ) -> List[Dict[str, Any]]:
@@ -358,10 +373,12 @@ class ConstructionDB:
             cursor = conn.cursor()
             base_query = """
                 SELECT pd.id, pd.report_id, pd.category, pd.location, pd.pile_id, pd.status, pd.recorded_at,
-                       r.report_date, r.shift_name, c.name as contractor_name
+                       r.report_date, r.shift_name, c.name as contractor_name,
+                       pr.name as project_name
                 FROM pile_details pd
                 JOIN shift_reports r ON pd.report_id = r.id
                 JOIN contractors c ON r.contractor_id = c.id
+                LEFT JOIN projects pr ON r.project_id = pr.id
             """
             conditions = []
             params = []
@@ -375,13 +392,17 @@ class ConstructionDB:
                     )
                 """)
 
+            if project_name and project_name.strip() and project_name != "[Tất cả nhóm/dự án]":
+                conditions.append("pr.name = ?")
+                params.append(project_name.strip())
+
             if keyword and keyword.strip():
                 kw = f"%{keyword.strip()}%"
                 conditions.append("""
                     (pd.location LIKE ? OR pd.pile_id LIKE ? OR pd.status LIKE ?
-                     OR r.report_date LIKE ? OR pd.category LIKE ? OR c.name LIKE ?)
+                     OR r.report_date LIKE ? OR pd.category LIKE ? OR c.name LIKE ? OR pr.name LIKE ?)
                 """)
-                params.extend([kw, kw, kw, kw, kw, kw])
+                params.extend([kw, kw, kw, kw, kw, kw, kw, kw])
 
             if conditions:
                 base_query += " WHERE " + " AND ".join(conditions)

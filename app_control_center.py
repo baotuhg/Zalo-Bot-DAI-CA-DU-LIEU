@@ -292,24 +292,30 @@ class DataBossControlApp:
         filter_box = tk.LabelFrame(self.tab_search, text=" 🎯 Bộ lọc & Điều kiện tìm kiếm ", font=("Segoe UI", 10, "bold"), bg="#F4F6F8", padx=12, pady=10)
         filter_box.pack(fill="x", padx=10, pady=6)
 
-        # Hàng 1: Từ khóa + Hạng mục + Nút Tìm kiếm
+        # Hàng 1: Từ khóa + Dự án + Hạng mục + Nút Tìm kiếm
         row1 = tk.Frame(filter_box, bg="#F4F6F8")
         row1.pack(fill="x", pady=3)
 
-        tk.Label(row1, text="🔍 Từ khóa:", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
-        self.entry_keyword = ttk.Entry(row1, font=("Segoe UI", 10), width=24)
-        self.entry_keyword.pack(side="left", padx=(6, 12))
+        tk.Label(row1, text="🔍 Từ khóa:", font=("Segoe UI", 9, "bold"), bg="#F4F6F8").pack(side="left")
+        self.entry_keyword = ttk.Entry(row1, font=("Segoe UI", 9), width=16)
+        self.entry_keyword.pack(side="left", padx=(4, 8))
         self.entry_keyword.bind("<Return>", lambda e: self._do_search())
 
-        tk.Label(row1, text="📁 Hạng mục:", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
-        self.combo_filter_cat = ttk.Combobox(row1, font=("Segoe UI", 10), state="readonly", width=22)
-        self.combo_filter_cat.pack(side="left", padx=(6, 12))
+        tk.Label(row1, text="🏗️ Nhóm / DA:", font=("Segoe UI", 9, "bold"), bg="#F4F6F8").pack(side="left")
+        self.combo_filter_proj = ttk.Combobox(row1, font=("Segoe UI", 9), state="readonly", width=18)
+        self.combo_filter_proj.pack(side="left", padx=(4, 8))
+        self.combo_filter_proj.set("[Tất cả nhóm/dự án]")
+        self.combo_filter_proj.bind("<<ComboboxSelected>>", lambda e: self._do_search())
+
+        tk.Label(row1, text="📁 Hạng mục:", font=("Segoe UI", 9, "bold"), bg="#F4F6F8").pack(side="left")
+        self.combo_filter_cat = ttk.Combobox(row1, font=("Segoe UI", 9), state="readonly", width=16)
+        self.combo_filter_cat.pack(side="left", padx=(4, 8))
         self.combo_filter_cat.set("[Tất cả hạng mục]")
         self.combo_filter_cat.bind("<<ComboboxSelected>>", lambda e: self._do_search())
 
-        self.var_latest_only = tk.BooleanVar(value=True)
-        chk_latest = ttk.Checkbutton(row1, text="Chỉ lấy số liệu mới nhất", variable=self.var_latest_only, command=self._do_search)
-        chk_latest.pack(side="left", padx=8)
+        self.var_latest_only = tk.BooleanVar(value=False)
+        chk_latest = ttk.Checkbutton(row1, text="Chỉ mới nhất", variable=self.var_latest_only, command=self._do_search)
+        chk_latest.pack(side="left", padx=6)
 
         btn_search = tk.Button(
             row1,
@@ -318,8 +324,8 @@ class DataBossControlApp:
             bg="#0E6655",
             fg="#FFFFFF",
             activebackground="#094A3E",
-            padx=12,
-            pady=4,
+            padx=10,
+            pady=3,
             relief="raised",
             cursor="hand2",
             command=self._do_search
@@ -332,8 +338,8 @@ class DataBossControlApp:
             font=("Segoe UI", 9),
             bg="#E2E8F0",
             fg="#1E293B",
-            padx=10,
-            pady=4,
+            padx=8,
+            pady=3,
             relief="flat",
             cursor="hand2",
             command=self._reset_search
@@ -428,16 +434,25 @@ class DataBossControlApp:
 
     def _switch_to_search_tab(self):
         """Chuyển sang Tab Tìm kiếm và focus vào ô nhập từ khóa."""
+        self._refresh_filter_categories()
+        curr_group_name = self.group_var.get().strip()
+        if curr_group_name and curr_group_name in self.combo_filter_proj["values"]:
+            self.combo_filter_proj.set(curr_group_name)
         self.notebook.select(self.tab_search)
         self.entry_keyword.focus_set()
         self.entry_keyword.select_range(0, tk.END)
+        self._do_search()
 
     def _refresh_filter_categories(self):
-        """Cập nhật danh sách hạng mục trong combobox từ DB."""
+        """Cập nhật danh sách dự án và hạng mục trong combobox từ DB."""
         try:
+            projs = self.db.get_projects()
+            proj_values = ["[Tất cả nhóm/dự án]"] + projs
+            self.combo_filter_proj["values"] = proj_values
+            
             cats = self.db.get_categories()
-            values = ["[Tất cả hạng mục]"] + cats
-            self.combo_filter_cat["values"] = values
+            cat_values = ["[Tất cả hạng mục]"] + cats
+            self.combo_filter_cat["values"] = cat_values
         except Exception:
             pass
 
@@ -448,34 +463,37 @@ class DataBossControlApp:
     def _do_search(self):
         """Thực hiện tìm kiếm và hiển thị dữ liệu lên bảng."""
         keyword = self.entry_keyword.get().strip()
+        proj = self.combo_filter_proj.get()
         cat = self.combo_filter_cat.get()
         latest_only = self.var_latest_only.get()
         view_type = self.var_view_type.get()
 
         if view_type == "items":
-            self._search_and_show_items(keyword, cat, latest_only)
+            self._search_and_show_items(keyword, cat, proj, latest_only)
         else:
-            self._search_and_show_piles(keyword, latest_only)
+            self._search_and_show_piles(keyword, proj, latest_only)
 
     def _reset_search(self):
         """Xóa toàn bộ điều kiện lọc và nạp lại tất cả."""
         self.entry_keyword.delete(0, tk.END)
+        self.combo_filter_proj.set("[Tất cả nhóm/dự án]")
         self.combo_filter_cat.set("[Tất cả hạng mục]")
-        self.var_latest_only.set(True)
+        self.var_latest_only.set(False)
         self._refresh_filter_categories()
         self._do_search()
 
-    def _search_and_show_items(self, keyword: str, category: str, latest_only: bool):
-        columns = ("stt", "date", "shift", "contractor", "category", "sub_item", "unit", "shift_qty", "accumulated_qty", "design_qty", "rate", "status_note")
+    def _search_and_show_items(self, keyword: str, category: str, project: str, latest_only: bool):
+        columns = ("stt", "project", "date", "shift", "contractor", "category", "sub_item", "unit", "shift_qty", "accumulated_qty", "design_qty", "rate", "status_note")
         self.tree["columns"] = columns
         self.tree["show"] = "headings"
 
         col_defs = [
             ("stt", "STT", 45, "center"),
+            ("project", "Dự án / Nhóm Zalo", 150, "w"),
             ("date", "Ngày", 85, "center"),
             ("shift", "Ca", 85, "center"),
             ("contractor", "Nhà thầu", 110, "w"),
-            ("category", "Hạng mục thi công", 170, "w"),
+            ("category", "Hạng mục thi công", 160, "w"),
             ("sub_item", "Vị trí / Cấu kiện", 150, "w"),
             ("unit", "ĐVT", 55, "center"),
             ("shift_qty", "Ca này", 65, "e"),
@@ -492,7 +510,7 @@ class DataBossControlApp:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        items = self.db.search_progress_items(keyword=keyword, category=category, latest_only=latest_only, limit=300)
+        items = self.db.search_progress_items(keyword=keyword, category=category, project_name=project, latest_only=latest_only, limit=300)
         self.current_items = items
 
         total_shift = 0.0
@@ -517,6 +535,7 @@ class DataBossControlApp:
 
             row_values = (
                 idx,
+                it.get("project_name", "-"),
                 it.get("report_date", "-"),
                 it.get("shift_name", "-"),
                 it.get("contractor_name", "-"),
@@ -538,13 +557,14 @@ class DataBossControlApp:
             text=f"📊 Tìm thấy: {count} hạng mục [{mode_text}] | Tổng KL ca: {total_shift:g} | Tổng lũy kế: {total_acc:g} | Tiến độ TB: {avg_pct:.1f}%"
         )
 
-    def _search_and_show_piles(self, keyword: str, latest_only: bool):
-        columns = ("stt", "date", "shift", "contractor", "location", "pile_id", "status")
+    def _search_and_show_piles(self, keyword: str, project: str, latest_only: bool):
+        columns = ("stt", "project", "date", "shift", "contractor", "location", "pile_id", "status")
         self.tree["columns"] = columns
         self.tree["show"] = "headings"
 
         col_defs = [
             ("stt", "STT", 50, "center"),
+            ("project", "Dự án / Nhóm Zalo", 150, "w"),
             ("date", "Ngày", 95, "center"),
             ("shift", "Ca", 95, "center"),
             ("contractor", "Nhà thầu", 130, "w"),
@@ -560,13 +580,14 @@ class DataBossControlApp:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        piles = self.db.search_piles(keyword=keyword, latest_only=latest_only, limit=300)
+        piles = self.db.search_piles(keyword=keyword, project_name=project, latest_only=latest_only, limit=300)
         self.current_piles = piles
 
         for idx, p in enumerate(piles, 1):
             tag = "evenrow" if idx % 2 == 0 else "oddrow"
             row_values = (
                 idx,
+                p.get("project_name", "-"),
                 p.get("report_date", "-"),
                 p.get("shift_name", "-"),
                 p.get("contractor_name", "-"),
@@ -600,8 +621,9 @@ class DataBossControlApp:
 
     def _export_search_excel(self):
         keyword = self.entry_keyword.get().strip()
+        proj = self.combo_filter_proj.get()
         cat = self.combo_filter_cat.get()
-        filter_summary = f"Từ khóa: '{keyword or 'Tất cả'}' | Hạng mục: '{cat}'"
+        filter_summary = f"Từ khóa: '{keyword or 'Tất cả'}' | Dự án: '{proj}' | Hạng mục: '{cat}'"
 
         if not self.current_items and not self.current_piles:
             messagebox.showwarning("Thông báo", "Không có dữ liệu để xuất Excel!")
