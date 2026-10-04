@@ -105,6 +105,27 @@ class ConstructionReportParser:
         if current_section:
             sections.append((current_section, current_lines))
 
+        # Nếu không có section đánh số 1., 2. (Báo cáo tự do / Tin nhắn hiện trường)
+        if not sections and lines:
+            has_dash = any(l.startswith(("-", "*", "+")) for l in lines)
+            if has_dash:
+                sec_items = []
+                cur_sec = "Hạng mục thi công"
+                cur_l = []
+                for l in lines:
+                    if l.startswith(("-", "*", "+")):
+                        if cur_l:
+                            sec_items.append((cur_sec, cur_l))
+                        cur_sec = l.lstrip("-*+ :\t")
+                        cur_l = [l]
+                    else:
+                        cur_l.append(l)
+                if cur_l:
+                    sec_items.append((cur_sec, cur_l))
+                sections = sec_items
+            else:
+                sections = [("Hiện trường thi công", lines)]
+
         # 4. Trích xuất chi tiết từng hạng mục công việc
         items: List[Dict[str, Any]] = []
         piles: List[Dict[str, Any]] = []
@@ -141,7 +162,20 @@ class ConstructionReportParser:
                     })
                     continue
 
-                # 4.2. Kiểm tra xem có tỷ lệ 3 số (Ca / Lũy kế / Tổng TK)
+                # 4.2. Tìm cọc dạng tự do trong dòng (VD: "...phát sinh cọc 8...")
+                p_inline = re.findall(r'(?:cọc|tim)\s*([A-Za-z0-9\-\_]+)', s_line, re.IGNORECASE)
+                if p_inline:
+                    for pm in p_inline:
+                        full_code = f"Cọc {pm}" if not str(pm).lower().startswith("cọc") else str(pm)
+                        if not any(p["pile_id"] == full_code for p in piles):
+                            piles.append({
+                                "category": sec_name,
+                                "location": current_sub_loc,
+                                "pile_id": full_code,
+                                "status": s_line[:80]
+                            })
+
+                # 4.3. Kiểm tra xem có tỷ lệ 3 số (Ca / Lũy kế / Tổng TK)
                 ratio_m = self.ratio_pattern.search(s_line)
                 if ratio_m:
                     shift_val = float(ratio_m.group(1))
@@ -149,13 +183,11 @@ class ConstructionReportParser:
                     total_val = float(ratio_m.group(3))
                     pct = round((accum_val / total_val * 100), 1) if total_val > 0 else 0.0
 
-                    # Tách tên cấu kiện/vị trí trước tỷ lệ
                     sub_title = s_line[:ratio_m.start()].strip(" -+*:\t")
                     if not sub_title:
-                        # Đây là dòng tổng của section (như "4. Thi công cọc khoan nhồi :\n00/14/106")
                         sub_title = "Tổng thể hạng mục"
                     else:
-                        current_sub_loc = sub_title # Cập nhật mố hiện tại cho các cọc bên dưới
+                        current_sub_loc = sub_title
 
                     items.append({
                         "category": sec_name,
@@ -168,10 +200,42 @@ class ConstructionReportParser:
                         "status_note": "Bình thường"
                     })
                 else:
-                    # Dòng text thuần túy
+                    # Kiểm tra số lượng kèm đơn vị (VD: 38m, 50m3, 20 tấn...)
+                    qty_m = re.search(r'(\d+(?:[\.,]\d+)?)\s*(m3|m³|m2|m²|m|tấn|cọc|cây|%|md)', s_line, re.IGNORECASE)
+                    if qty_m and not any(it["sub_item"] == s_line[:40] for it in items):
+                        try:
+                            val = float(qty_m.group(1).replace(",", "."))
+                            u = qty_m.group(2)
+                            items.append({
+                                "category": sec_name,
+                                "sub_item": s_line.split(".")[0].strip(" -+*:\t")[:45] or current_sub_loc,
+                                "unit": u,
+                                "shift_qty": val,
+                                "accumulated_qty": val,
+                                "design_qty": val,
+                                "completion_rate": 100.0,
+                                "status_note": s_line[:100]
+                            })
+                        except ValueError:
+                            pass
+
                     clean_line = s_line.strip(" -+*:\t")
                     if clean_line:
                         current_sub_loc = clean_line
+
+        # 4.4. Đảm bảo nếu chưa có item nào thì lấy dòng chính làm item
+        if not items and lines:
+            first_l = lines[0].strip(" -+*:\t")
+            items.append({
+                "category": "Hiện trường thi công",
+                "sub_item": first_l[:40] if first_l else "Công việc trong ca",
+                "unit": "Điểm",
+                "shift_qty": 1.0,
+                "accumulated_qty": 1.0,
+                "design_qty": 1.0,
+                "completion_rate": 100.0,
+                "status_note": text.replace("\n", " ")[:120]
+            })
 
         return {
             "report_date": report_date,
