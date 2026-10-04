@@ -1,3 +1,4 @@
 @echo off
+chcp 65001 >nul
 cd /d "%~dp0"
-start "" ".venv\Scripts\pythonw.exe" app_control_center.py
+start "" "%~dp0.venv\Scripts\pythonw.exe" "%~dp0app_control_center.py"
