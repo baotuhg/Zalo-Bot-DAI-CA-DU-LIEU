@@ -1045,6 +1045,9 @@ class DataBossControlApp:
                     else:
                         self.combo_group.set(items[0])
                     self._log(f"Đã tải {len(data)} nhóm từ tài khoản Zalo.")
+                    # Tự động kích hoạt bot realtime ngay lập tức (100% tự động như Telegram Bot)
+                    if not self.bot_running:
+                        self.root.after(400, self._toggle_bot)
             except Exception as e:
                 self._log(f"Chưa lấy được danh sách nhóm Zalo: {e}")
         threading.Thread(target=worker, daemon=True).start()

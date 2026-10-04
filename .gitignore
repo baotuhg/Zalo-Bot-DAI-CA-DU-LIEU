@@ -23,3 +23,6 @@ data/*.xlsx
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Temporary cloned reference repos
+temp_2anh_bot/

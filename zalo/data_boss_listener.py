@@ -22,7 +22,7 @@ class DataBossListener:
         ]
         self.processed_msg_ids = set()
 
-    def handle_message(self, msg: Dict[str, Any]):
+    def handle_message(self, msg: Dict[str, Any], project_name: Optional[str] = None):
         """Xử lý từng tin nhắn đến từ Zalo."""
         msg_id = msg.get("msgId")
         if msg_id and str(msg_id) in self.processed_msg_ids:
@@ -35,6 +35,8 @@ class DataBossListener:
         content = (msg.get("content") or "").strip()
         media_urls = msg.get("mediaUrls") or []
         is_from_bot = msg.get("isFromBot", False)
+
+        resolved_project = project_name or msg.get("projectName") or msg.get("threadName") or "Dự án Công trường"
 
         if is_from_bot:
             return
@@ -108,7 +110,7 @@ class DataBossListener:
                 text=content,
                 sender_name=sender_name,
                 media_urls=media_urls,
-                project_name="PMU: BĂNG HẠ TẦNG OLP"
+                project_name=resolved_project
             )
 
             # Gửi phản hồi xác nhận
