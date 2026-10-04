@@ -34,17 +34,19 @@ class ConstructionReportParser:
 
     def is_construction_report(self, text: str) -> bool:
         """Kiểm tra xem văn bản có phải là báo cáo thi công công trường hay không."""
-        if not text:
+        if not text or len(text.strip()) < 15:
             return False
         text_lower = text.lower()
         keywords = [
-            "báo cáo thi công", "báo cáo ca", "báo cáo tiến độ",
-            "mố m", "trụ t", "cọc khoan nhồi", "casing", "sàn đạo", "ép cừ", "lồng thép",
-            "đang khoan", "thổi rửa", "hạ lồng thép", "đổ bê tông"
+            "báo cáo", "tiến độ", "thi công", "nhật trình", "khối lượng", "ca ngày", "ca đêm",
+            "nhà thầu", "gói thầu", "mố", "trụ", "cọc", "casing", "sàn đạo", "ép cừ", "lồng thép",
+            "khoan nhồi", "bê tông", "đào đắp", "k95", "k98", "cấp phối", "dầm", "đúc",
+            "đang khoan", "thổi rửa", "hạ lồng", "đổ bê tông", "kcs", "thanh thải", "sạt lở", "tim cọc"
         ]
         matched_kw = sum(1 for kw in keywords if kw in text_lower)
         has_ratio = bool(self.ratio_pattern.search(text))
-        return matched_kw >= 2 or (matched_kw >= 1 and has_ratio)
+        has_pile = bool(re.search(r'(?:\+|\-|\*)\s*(?:cọc|tim|mố|trụ)\s*[\w\-]+', text_lower))
+        return (matched_kw >= 2 and (has_ratio or has_pile)) or (matched_kw >= 3) or (has_ratio and has_pile)
 
     def parse(self, text: str, sender_name: str = "") -> Dict[str, Any]:
         """
