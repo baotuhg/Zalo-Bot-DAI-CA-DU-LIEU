@@ -25,11 +25,14 @@ def ensure_daemon_running(bridge: ZaloBridge) -> bool:
         return True
 
     print("[Hệ thống] Zalo Daemon chưa bật. Đang tự động kích hoạt ngầm...")
-    cli_path = r"C:\Users\baotu\AppData\Roaming\npm\node_modules\zalo-personal-mcp\dist\bin\cli.js"
+    appdata = os.environ.get("APPDATA", "")
+    cli_path = Path(appdata) / "npm" / "node_modules" / "zalo-personal-mcp" / "dist" / "bin" / "cli.js"
+    if not cli_path.exists():
+        cli_path = Path.home() / "AppData" / "Roaming" / "npm" / "node_modules" / "zalo-personal-mcp" / "dist" / "bin" / "cli.js"
     CREATE_NO_WINDOW = 0x08000000
     try:
         subprocess.Popen(
-            ["node", cli_path, "daemon", "start"],
+            ["node", str(cli_path), "daemon", "start"],
             creationflags=CREATE_NO_WINDOW,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
@@ -138,7 +141,7 @@ def main():
     print("    💡 Nhấn Ctrl + C để dừng bot.")
     print("=" * 70 + "\n")
 
-    daemon_db_path = Path(r"C:\Users\baotu\.zalo-personal-mcp\zalo.db")
+    daemon_db_path = Path.home() / ".zalo-personal-mcp" / "zalo.db"
     last_seen_id = 0
 
     # Lấy vị trí tin nhắn hiện tại

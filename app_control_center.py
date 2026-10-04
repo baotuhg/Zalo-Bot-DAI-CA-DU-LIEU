@@ -723,7 +723,7 @@ class DataBossControlApp:
         self._log(f"🔍 Bắt đầu quét tin nhắn hiện có trong nhóm [{group_name}]...")
 
         found_msgs = []
-        daemon_db = Path(r"C:\Users\baotu\.zalo-personal-mcp\zalo.db")
+        daemon_db = Path.home() / ".zalo-personal-mcp" / "zalo.db"
         if daemon_db.exists():
             try:
                 import sqlite3
@@ -1086,7 +1086,7 @@ class DataBossControlApp:
         Đọc trực tiếp từ cơ sở dữ liệu Zalo với độ trễ < 800ms.
         Bắt ngay lập tức mọi tin nhắn báo cáo từ các nhóm công trường.
         """
-        daemon_db_path = Path(r"C:\Users\baotu\.zalo-personal-mcp\zalo.db")
+        daemon_db_path = Path.home() / ".zalo-personal-mcp" / "zalo.db"
         last_seen_id = 0
 
         # Lấy max id ban đầu

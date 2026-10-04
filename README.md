@@ -71,18 +71,22 @@ modest-babbage/
 
 ---
 
-## 🚀 HƯỚNG DẪN VẬN HÀNH (4 BƯỚC ĐƠN GIẢN)
+## 🚀 HƯỚNG DẪN VẬN HÀNH (CỰC KỲ ĐƠN GIẢN)
 
-1. **Bước 1: Kết nối Zalo:**
+1. **Bước 0: Cài đặt môi trường (Dành cho máy mới hoặc lần đầu tải file ZIP từ GitHub):**
+   * Nhấp đúp file `0_CAI_DAT_MOI_TRUONG.bat` để hệ thống tự động tạo môi trường ảo `.venv` và cài đặt đầy đủ các thư viện trong `requirements.txt`.
+   * *(Lưu ý: Nếu bạn quên chạy bước này, các file `2_...` hoặc `3_...` cũng sẽ tự động phát hiện và cài đặt giúp bạn, hoàn toàn không lo lỗi thiếu file)*.
+
+2. **Bước 1: Kết nối Zalo:**
    * Nhấp đúp file `1_KET_NOI_ZALO.bat` để quét mã QR đăng nhập tài khoản Zalo (chỉ cần làm 1 lần).
 
-2. **Bước 2: Khởi động Bot Realtime (Khuyên dùng):**
+3. **Bước 2: Khởi động Bot Realtime (Khuyên dùng - 100% Tự Động):**
    * Nhấp đúp file `2_CHAY_BOT_REALTIME.bat`.
    * Bot tự động theo dõi 19 nhóm công trường (`307 HỒ SƠ SẠT LỞ`, `Cao tốc TQ-HG`...).
    * **Bất kỳ kỹ sư nào gửi tin nhắn báo cáo vào nhóm**, Bot tự động bóc tách, ghi vào SQLite & Excel, thả like và phản hồi xác nhận trực tiếp vào nhóm!
 
-3. **Bước 3: Mở Bảng điều khiển (Nếu cần tra cứu & xuất Excel):**
+4. **Bước 3: Mở Bảng điều khiển (Nếu cần tra cứu & xuất Excel):**
    * Nhấp đúp file `3_BANG_DIEU_KHIEN.bat` để tìm kiếm theo dự án/hạng mục/tim cọc, xem chi tiết và xuất file Excel.
 
-4. **Bước 4: Xem Web Dashboard:**
-   * Nhấp đúp file `4_XEM_WEB_DASHBOARD.bat` để mở báo cáo trực tuyến trên trình duyệt.
+5. **Bước 4: Xem Web Dashboard:**
+   * Nhấp đúp file `4_XEM_WEB_DASHBOARD.bat` để mở báo cáo trực tuyến trên trình duyệt: [https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/](https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/).
