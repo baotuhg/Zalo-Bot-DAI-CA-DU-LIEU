@@ -8,6 +8,10 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Set, Optional
 
+BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 from config import Config
 from database.construction_db import ConstructionDB
 from core.report_parser import ConstructionReportParser
@@ -58,6 +62,12 @@ def async_git_sync(report_id: int, project_name: str):
     threading.Thread(target=_worker, daemon=True).start()
 
 def main():
+    pid_file = BASE_DIR / "data" / "bot.pid"
+    try:
+        pid_file.write_text(str(os.getpid()), encoding="utf-8")
+    except Exception:
+        pass
+
     print("=" * 70)
     print(" 🤖 BOT ZALO 'ĐẠI CA DỮ LIỆU' - TRỢ LÝ GIÁM SÁT DỰ ÁN CÔNG TRƯỜNG")
     print("    Hoạt động 100% tự động Realtime như Telegram Bot / 2Anh-Zalo-Bot")
@@ -257,6 +267,12 @@ def main():
 
     except KeyboardInterrupt:
         print("\n[Đại ca dữ liệu] Đã dừng Bot theo lệnh người dùng. Chúc chỉ huy một ngày tốt lành!")
+    finally:
+        if pid_file.exists():
+            try:
+                pid_file.unlink()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     main()

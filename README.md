@@ -33,13 +33,17 @@ Hệ sinh thái tự động hóa thu thập, bóc tách và quản trị dữ l
 
 ```
 modest-babbage/
-├── 1_KET_NOI_ZALO.bat           # [Bước 1] Kết nối Zalo Daemon (Quét mã QR)
-├── 2_CHAY_BOT_REALTIME.bat       # [Bước 2] Khởi động Bot Realtime túc trực 24/7
-├── 3_BANG_DIEU_KHIEN.bat        # [Bước 3] Mở Bảng điều khiển Desktop & Lọc Excel
-├── 4_XEM_WEB_DASHBOARD.bat      # [Bước 4] Mở trang Web Dashboard trực tuyến
+├── CHAY_HE_THONG.bat           # 🚀 [KHUYÊN DÙNG] Khởi động 1-Click All-in-One toàn bộ hệ thống
+├── web_control.py              # Máy chủ Web Control Center & REST API nội bộ (cổng 8080)
 │
-├── index.html                   # Bảng điều hành Web (Dành cho GitHub Pages)
-├── config.py                    # Cấu hình đường dẫn, CSDL, Zalo Daemon URL
+├── 0_CAI_DAT_MOI_TRUONG.bat    # [Tùy chọn] Cài đặt môi trường tự động
+├── 1_KET_NOI_ZALO.bat          # [Tùy chọn] Kết nối Zalo Daemon (Quét mã QR)
+├── 2_CHAY_BOT_REALTIME.bat      # [Tùy chọn] Khởi động Bot Realtime túc trực 24/7
+├── 3_BANG_DIEU_KHIEN.bat       # [Tùy chọn] Mở Bảng điều khiển Desktop Tkinter
+├── 4_XEM_WEB_DASHBOARD.bat     # [Tùy chọn] Mở trang Web Dashboard trực tuyến
+│
+├── index.html                  # Bảng điều hành Web kiêm Trung tâm Quản trị Bot
+├── config.py                   # Cấu hình đường dẫn, CSDL, Zalo Daemon URL
 ├── CHON_NHOM_THEO_DOI.txt       # Cấu hình nhóm mục tiêu (mặc định ALL nhóm thi công)
 ├── main.py                      # Điểm khởi chạy Python chính thức
 ├── run_data_boss.py             # Động cơ Bot Realtime Daemon
@@ -71,22 +75,25 @@ modest-babbage/
 
 ---
 
-## 🚀 HƯỚNG DẪN VẬN HÀNH (CỰC KỲ ĐƠN GIẢN)
+## 🚀 HƯỚNG DẪN VẬN HÀNH
 
-1. **Bước 0: Cài đặt môi trường (Dành cho máy mới hoặc lần đầu tải file ZIP từ GitHub):**
-   * Nhấp đúp file `0_CAI_DAT_MOI_TRUONG.bat` để hệ thống tự động tạo môi trường ảo `.venv` và cài đặt đầy đủ các thư viện trong `requirements.txt`.
-   * *(Lưu ý: Nếu bạn quên chạy bước này, các file `2_...` hoặc `3_...` cũng sẽ tự động phát hiện và cài đặt giúp bạn, hoàn toàn không lo lỗi thiếu file)*.
+### 👉 Cách 1: Khởi động 1-Click All-in-One (Khuyên dùng)
+Chỉ cần nhấp đúp duy nhất vào:
+**`CHAY_HE_THONG.bat`**
+* Tự động kiểm tra Python & Node.js, tự khởi tạo `.venv`.
+* Tự động kết nối Zalo (hiện mã QR nếu chưa đăng nhập).
+* Tự động kích hoạt Bot Realtime và mở ngay Bảng điều hành Web (`http://localhost:8080`) trên trình duyệt:
+  - Có sẵn nút bấm **[▶ Khởi động Bot]** / **[⏹ Dừng Bot]**
+  - Nút **[📲 Quét mã QR Zalo]**
+  - Nút **[⚡ Đồng bộ lên Cloud]** (Tự động Git Push lên GitHub Pages trong 3s, **không cần mở GitHub Desktop**)
+  - Nút **[📊 Mở file Excel tiến độ WBS]**
 
-2. **Bước 1: Kết nối Zalo:**
-   * Nhấp đúp file `1_KET_NOI_ZALO.bat` để quét mã QR đăng nhập tài khoản Zalo (chỉ cần làm 1 lần).
+---
 
-3. **Bước 2: Khởi động Bot Realtime (Khuyên dùng - 100% Tự Động):**
-   * Nhấp đúp file `2_CHAY_BOT_REALTIME.bat`.
-   * Bot tự động theo dõi 19 nhóm công trường (`307 HỒ SƠ SẠT LỞ`, `Cao tốc TQ-HG`...).
-   * **Bất kỳ kỹ sư nào gửi tin nhắn báo cáo vào nhóm**, Bot tự động bóc tách, ghi vào SQLite & Excel, thả like và phản hồi xác nhận trực tiếp vào nhóm!
-
-4. **Bước 3: Mở Bảng điều khiển (Nếu cần tra cứu & xuất Excel):**
-   * Nhấp đúp file `3_BANG_DIEU_KHIEN.bat` để tìm kiếm theo dự án/hạng mục/tim cọc, xem chi tiết và xuất file Excel.
-
-5. **Bước 4: Xem Web Dashboard:**
+### 👉 Cách 2: Vận hành từng bước thủ công (Tùy chọn)
+1. **Bước 0: Cài đặt môi trường:** Nhấp đúp `0_CAI_DAT_MOI_TRUONG.bat`.
+2. **Bước 1: Kết nối Zalo:** Nhấp đúp `1_KET_NOI_ZALO.bat` (quét mã QR 1 lần duy nhất).
+3. **Bước 2: Khởi động Bot Realtime:** Nhấp đúp `2_CHAY_BOT_REALTIME.bat`.
+4. **Bước 3: Bảng điều khiển Desktop:** Nhấp đúp `3_BANG_DIEU_KHIEN.bat`.
+5. **Bước 4: Xem Web Dashboard:** Nhấp đúp `4_XEM_WEB_DASHBOARD.bat` hoặc truy cập [Web Cloud](https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/).
    * Nhấp đúp file `4_XEM_WEB_DASHBOARD.bat` để mở báo cáo trực tuyến trên trình duyệt: [https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/](https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/).

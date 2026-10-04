@@ -31,11 +31,28 @@ Trước khi khởi chạy hệ thống lần đầu, máy tính của bạn c�
 
 ---
 
-## 🚀 QUY TRÌNH 4 BƯỚC KHỞI CHẠY (DÀNH CHO NGƯỜI DÙNG MỚI)
+## 🚀 KHỞI ĐỘNG 1-CLICK ALL-IN-ONE (KHUYÊN DÙNG NHẤT)
 
-Khi bạn (hoặc bất kỳ ai) tải file ZIP của dự án từ GitHub về và giải nén ra bất kỳ thư mục nào:
+Khi bạn hoặc kỹ sư tải file ZIP về từ GitHub, chỉ cần làm đúng **1 thao tác duy nhất**:
 
-### 🔹 Bước 0: Cài đặt môi trường tự động (Chỉ chạy 1 lần khi mới tải về)
+👉 **Nhấp đúp chuột vào file: `CHAY_HE_THONG.bat`**
+1. **Tự động 100%:** Kiểm tra Python, tự tạo `.venv`, tự cài đặt thư viện cần thiết.
+2. **Tự động kết nối Zalo:** Nếu chưa từng đăng nhập, cửa sổ quét mã QR sẽ tự động bật lên để bạn quét một lần duy nhất.
+3. **Tự động khởi động Bot Realtime & Mở Bảng điều hành Web:**
+   * Trình duyệt tự mở trang: `http://localhost:8080`.
+   * Giao diện Bảng điều hành tích hợp sẵn **Trung Tâm Bot & Zalo**:
+     - Nút **[▶ Bật / ⏹ Tắt Bot Realtime]** trực quan.
+     - Nút **[📲 Quét mã QR Zalo]**.
+     - Nút **[⚡ Đồng bộ lên Cloud ngay]**: Bấm 1 click là đẩy dữ liệu lên GitHub Pages trong 3 giây, **loại bỏ hoàn toàn việc phải mở GitHub Desktop**!
+     - Nút **[📊 Mở file Excel tiến độ WBS]**.
+
+---
+
+## 🛠️ QUY TRÌNH TỪNG BƯỚC THỦ CÔNG (TÙY CHỌN DÀNH CHO KỸ SƯ MUỐN TÁCH RỜI)
+
+Nếu bạn muốn chạy từng thành phần độc lập:
+
+### 🔹 Bước 0: Cài đặt môi trường tự động
 * Nhấp đúp chuột vào file: **`0_CAI_DAT_MOI_TRUONG.bat`**
 * Màn hình sẽ tự động:
   1. Kiểm tra Python trên máy.

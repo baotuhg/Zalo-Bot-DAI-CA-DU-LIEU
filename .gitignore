@@ -19,6 +19,8 @@ __pycache__/
 data/construction_data.db
 data/site_photos/
 data/*.xlsx
+data/*.log
+data/*.pid
 
 # OS generated files
 .DS_Store
