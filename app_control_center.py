@@ -1188,11 +1188,15 @@ class DataBossControlApp:
 
     def _open_excel(self):
         excel_path = self.excel_syncer.excel_path
-        if excel_path.exists():
-            self._log(f"Đang mở file Excel: {excel_path}")
+        if not excel_path.exists():
+            self._log("Chưa có file Excel, đang tự động tạo bảng tính chuẩn WBS mới...")
+            self.excel_syncer.generate_or_update([], [], [])
+        self._log(f"Đang mở file Excel: {excel_path}")
+        try:
             os.startfile(str(excel_path))
-        else:
-            messagebox.showwarning("Thông báo", "File Excel chưa được tạo. Hãy nạp báo cáo từ Zalo trước nhé!")
+        except Exception as e:
+            self._log(f"Không thể mở trực tiếp file Excel: {e}")
+            messagebox.showinfo("Đường dẫn File", f"File Excel lưu tại:\n{excel_path}")
 
     def _resync_all_system(self):
         """Đồng bộ hóa lại toàn bộ: CSDL -> Excel -> Web Dashboard GitHub."""

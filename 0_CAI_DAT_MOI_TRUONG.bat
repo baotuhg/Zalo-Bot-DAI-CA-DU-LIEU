@@ -8,7 +8,7 @@ echo ======================================================================
 echo       🛠️ [BƯỚC 0] CÀI ĐẶT MÔI TRƯỜNG TỰ ĐỘNG - ĐẠI CA DỮ LIỆU
 echo ======================================================================
 echo.
-echo [1/3] Đang kiểm tra Python trên máy tính của bạn...
+echo [1/4] Đang kiểm tra Python trên máy tính của bạn...
 where python >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     echo.
@@ -24,7 +24,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo ✅ Đã tìm thấy Python hệ thống.
 echo.
-echo [2/3] Đang tạo môi trường ảo Python (.venv)...
+echo [2/4] Đang tạo môi trường ảo Python (.venv)...
 if not exist "%~dp0.venv\Scripts\python.exe" (
     python -m venv "%~dp0.venv"
     echo ✅ Đã tạo thư mục .venv thành công.
@@ -33,7 +33,7 @@ if not exist "%~dp0.venv\Scripts\python.exe" (
 )
 
 echo.
-echo [3/3] Đang cài đặt các thư viện cần thiết từ requirements.txt...
+echo [3/4] Đang cài đặt các thư viện cần thiết từ requirements.txt...
 if exist "%~dp0.venv\Scripts\pip.exe" (
     "%~dp0.venv\Scripts\pip.exe" install --upgrade pip
     "%~dp0.venv\Scripts\pip.exe" install -r "%~dp0requirements.txt"
@@ -42,12 +42,25 @@ if exist "%~dp0.venv\Scripts\pip.exe" (
 )
 
 echo.
+echo [4/4] Đang kiểm tra Node.js (cần thiết để mở cổng kết nối Zalo)...
+where node >nul 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo ⚠️ Lưu ý: Chưa phát hiện Node.js trên máy tính!
+    echo 👉 Để kết nối Zalo, vui lòng tải và cài đặt Node.js tại: https://nodejs.org/ (bản LTS)
+) else (
+    echo ✅ Đã tìm thấy Node.js hệ thống.
+    echo ⏳ Đang cài đặt công cụ zalo-personal-mcp...
+    call npm install -g zalo-personal-mcp >nul 2>nul
+    echo ✅ Zalo MCP đã được cài đặt sẵn sàng!
+)
+
+echo.
 echo ======================================================================
 echo 🎉 CHÚC MỪNG! HỆ THỐNG ĐÃ ĐƯỢC THIẾT LẬP HOÀN TOÀN TỰ ĐỘNG!
 echo.
-echo Các bước tiếp theo:
-echo  👉 Bước 1: Chạy "1_KET_NOI_ZALO.bat" để kết nối tài khoản Zalo.
-echo  👉 Bước 2: Chạy "2_CHAY_BOT_REALTIME.bat" để Bot tự động giám sát.
+echo Các bước vận hành:
+echo  👉 Bước 1: Chạy "1_KET_NOI_ZALO.bat" để quét mã QR kết nối tài khoản Zalo.
+echo  👉 Bước 2: Chạy "2_CHAY_BOT_REALTIME.bat" để Bot tự động bắt báo cáo 24/7.
 echo  👉 Bước 3: Chạy "3_BANG_DIEU_KHIEN.bat" để xem bảng dữ liệu và xuất Excel.
 echo  👉 Bước 4: Chạy "4_XEM_WEB_DASHBOARD.bat" để xem Dashboard trực tuyến.
 echo ======================================================================

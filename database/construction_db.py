@@ -439,3 +439,15 @@ class ConstructionDB:
             res["photos"] = [dict(r) for r in cursor.fetchall()]
 
             return res
+
+    def clear_all_data(self):
+        """Xóa sạch toàn bộ dữ liệu dự án để bắt đầu mới (Reset Clean)."""
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            for tbl in ["site_photos", "pile_details", "progress_items", "shift_reports", "contractors", "projects"]:
+                try:
+                    cursor.execute(f"DELETE FROM {tbl}")
+                except Exception:
+                    pass
+            conn.commit()
+            cursor.execute("VACUUM")
