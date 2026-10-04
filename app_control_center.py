@@ -259,18 +259,19 @@ class DataBossControlApp:
         )
         btn_excel.grid(row=0, column=3, padx=4, pady=4, sticky="nsew")
 
-        # Nút Đồng bộ Git
+        # Nút Đồng bộ Toàn bộ Hệ thống
         btn_git = tk.Button(
             btn_grid,
-            text="🔄 ĐỒNG BỘ LÊN GITHUB PAGES",
+            text="⚡ ĐỒNG BỘ TOÀN BỘ (EXCEL + WEB)",
             font=("Segoe UI", 9, "bold"),
-            bg="#4B5563",
+            bg="#7C3AED",
             fg="#FFFFFF",
             padx=8,
             pady=8,
             cursor="hand2",
-            relief="groove",
-            command=self._manual_git_sync
+            relief="raised",
+            bd=2,
+            command=self._resync_all_system
         )
         btn_git.grid(row=0, column=4, padx=4, pady=4, sticky="nsew")
 
@@ -746,18 +747,34 @@ class DataBossControlApp:
                 pass
 
         if not found_msgs:
-            self._log(f"ℹ️ Nhóm [{group_name}] chưa có tin nhắn nào trong bộ nhớ Zalo gần đây.")
-            self._log("💡 GỢI Ý ĐỂ ĐỒNG BỘ DỮ LIỆU:")
-            self._log("   👉 Cách 1 (Nhanh nhất): Copy tin nhắn báo cáo từ Zalo và bấm nút '📋 DÁN BÁO CÁO CŨ (COPY TỪ ZALO)' để nạp ngay!")
-            self._log("   👉 Cách 2: Bất kỳ ai gửi/chuyển tiếp tin nhắn báo cáo vào nhóm trên Zalo, Bot đang chạy sẽ tự động bắt lấy và bóc tách ngay tức thì.")
+            # Kiểm tra xem nhóm này đã có dữ liệu trong SQLite chưa
+            existing_items = self.db.search_progress_items(project_name=group_name) if group_name else []
+            if existing_items:
+                self._log(f"ℹ️ Nhóm [{group_name}]: Đang có {len(existing_items)} hạng mục & tim cọc đã lưu trữ trong CSDL máy tính.")
+                self._log(f"   (Chưa phát sinh thêm tin nhắn báo cáo mới nào trên Zalo kể từ lúc mở Bot).")
+            else:
+                self._log(f"ℹ️ Nhóm [{group_name}] chưa có tin nhắn nào trong bộ nhớ Zalo gần đây.")
+                self._log("💡 GỢI Ý ĐỂ ĐỒNG BỘ DỮ LIỆU:")
+                self._log("   👉 Cách 1 (Nhanh nhất): Copy tin nhắn báo cáo từ Zalo và bấm nút '📋 DÁN BÁO CÁO CŨ (COPY TỪ ZALO)' để nạp ngay!")
+                self._log("   👉 Cách 2: Bất kỳ ai gửi/chuyển tiếp tin nhắn báo cáo vào nhóm trên Zalo, Bot đang chạy sẽ tự động bắt lấy và bóc tách ngay tức thì.")
+            
             if not silent_if_empty:
-                messagebox.showinfo(
-                    "Thông báo quét nhóm",
-                    f"Nhóm [{group_name}] chưa có tin nhắn nào trong bộ nhớ Zalo gần đây.\n\n"
-                    "💡 Bạn có thể:\n"
-                    "1. Bật Bot giám sát để tự động bắt tin nhắn báo cáo khi có người gửi vào nhóm.\n"
-                    "2. Hoặc Copy tin nhắn báo cáo cũ từ Zalo rồi bấm nút '📋 DÁN BÁO CÁO CŨ' để nạp ngay!"
-                )
+                if existing_items:
+                    messagebox.showinfo(
+                        "Dữ liệu nhóm Zalo",
+                        f"Nhóm [{group_name}] hiện đã lưu trữ sẵn {len(existing_items)} hạng mục trong CSDL hệ thống!\n\n"
+                        "- Chưa có tin nhắn báo cáo mới nào phát sinh thêm trên Zalo kể từ lúc bật Bot.\n"
+                        "- Bạn có thể bấm sang Tab '🔍 TÌM KIẾM & LỌC DỮ LIỆU' để xem toàn bộ chi tiết.\n"
+                        "- Để bổ sung thêm các ca cũ khác: Bấm '📋 DÁN BÁO CÁO CŨ (COPY TỪ ZALO)'."
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Thông báo quét nhóm",
+                        f"Nhóm [{group_name}] chưa có tin nhắn nào trong bộ nhớ Zalo gần đây.\n\n"
+                        "💡 Bạn có thể:\n"
+                        "1. Bật Bot giám sát để tự động bắt tin nhắn báo cáo khi có người gửi vào nhóm.\n"
+                        "2. Hoặc Copy tin nhắn báo cáo cũ từ Zalo rồi bấm nút '📋 DÁN BÁO CÁO CŨ' để nạp ngay!"
+                    )
             return
 
         self._log(f"🔎 Đã tìm thấy {len(found_msgs)} tin nhắn trong nhóm. Đang kiểm tra cấu trúc báo cáo thi công...")
@@ -1061,15 +1078,45 @@ class DataBossControlApp:
         else:
             messagebox.showwarning("Thông báo", "File Excel chưa được tạo. Hãy nạp báo cáo từ Zalo trước nhé!")
 
-    def _manual_git_sync(self):
-        self._log("🔄 Đang thực hiện Git Push lên GitHub Pages...")
+    def _resync_all_system(self):
+        """Đồng bộ hóa lại toàn bộ: CSDL -> Excel -> Web Dashboard GitHub."""
+        self._log("⚡ Đang tiến hành đồng bộ hóa lại toàn bộ hệ thống...")
         def worker():
-            ok = auto_push_to_github("Đồng bộ thủ công từ Bảng điều khiển")
-            if ok:
-                self._log("✅ ĐỒNG BỘ GITHUB PAGES THÀNH CÔNG! Web sẽ cập nhật sau 30 giây.")
-                messagebox.showinfo("Thành công", "Đã đồng bộ thành công lên GitHub Pages!\nLink: https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/")
-            else:
-                self._log("⚠️ Không có thay đổi mới hoặc lỗi push.")
+            try:
+                # 1. Quét tin nhắn mới trong Zalo nếu có
+                thread_id, group_name = self._get_selected_group_info()
+                self._scan_current_group_now(silent_if_empty=True)
+
+                # 2. Đồng bộ Excel
+                summary = self.db.get_latest_project_summary()
+                piles = self.db.get_active_piles()
+                self.excel_syncer.sync_to_excel(summary, piles, project_name=group_name)
+                self._log("📑 Đã đồng bộ lại toàn bộ số liệu vào file Excel sống.")
+
+                # 3. Đồng bộ GitHub Pages
+                ok = auto_push_to_github("Đồng bộ toàn bộ từ Bảng điều khiển")
+                if ok:
+                    self._log("✅ ĐỒNG BỘ GITHUB PAGES THÀNH CÔNG!")
+                
+                # 4. Làm mới giao diện
+                self.root.after(0, self._refresh_filter_categories)
+                self.root.after(0, self._do_search)
+
+                total_items = len(self.db.search_progress_items())
+                total_piles = len(self.db.search_piles())
+                self._log(f"🎉 ĐỒNG BỘ TOÀN DIỆN HOÀN TẤT! Hiện có {total_items} hạng mục & {total_piles} tim cọc.")
+                messagebox.showinfo(
+                    "Đồng Bộ Thành Công",
+                    f"Đã đồng bộ hóa lại toàn bộ hệ thống thành công!\n\n"
+                    f"- File Excel: Đã cập nhật công thức và số liệu mới nhất.\n"
+                    f"- Web Dashboard: Đã đồng bộ trực tuyến lên GitHub.\n"
+                    f"- Tổng hạng mục đang quản lý: {total_items}\n"
+                    f"- Tổng tim cọc hiện trường: {total_piles}"
+                )
+            except Exception as e:
+                self._log(f"⚠️ Lỗi đồng bộ: {e}")
+                messagebox.showerror("Lỗi", f"Không thể hoàn tất đồng bộ: {e}")
+
         threading.Thread(target=worker, daemon=True).start()
 
 
