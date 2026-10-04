@@ -249,6 +249,44 @@ class ConstructionReportParser:
             "piles_in_progress_count": len(piles)
         }
 
+    def split_multiple_reports(self, text: str) -> List[str]:
+        """
+        Tự động nhận diện và phân tách một chuỗi văn bản dài chứa nhiều báo cáo ca khác nhau.
+        Hỗ trợ:
+        - Các dấu ngăn cách: '---', '===', '***'
+        - Header sao chép của Zalo PC: '[Tên người gửi - DD/MM/YYYY HH:MM]' hoặc '[DD/MM/YYYY HH:MM]'
+        - Tiêu đề bắt đầu báo cáo mới: 'Báo cáo ca...', 'Báo cáo ngày...', 'Báo cáo tiến độ...'
+        """
+        text = text.strip()
+        if not text:
+            return []
+
+        # 1. Thử tách theo dấu phân cách rõ ràng (--- hoặc === hoặc ***)
+        chunks = re.split(r'\n\s*[-=*]{3,}\s*\n', text)
+        if len(chunks) > 1:
+            valid = [c.strip() for c in chunks if len(c.strip()) > 10]
+            if len(valid) > 1:
+                return valid
+
+        # 2. Thử tách theo header Zalo Copy: VD: [Phạm Văn A - 28/09/2026 18:30]
+        zalo_header_pattern = r'(?:^|\n)(?=\[(?:[^\n\]]+[\-\,\s]+)?\d{1,2}[\/\-\.]\d{1,2}(?:[\/\-\.]\d{2,4})?(?:\s+\d{1,2}:\d{2})?\])'
+        zalo_chunks = re.split(zalo_header_pattern, text)
+        if len(zalo_chunks) > 1:
+            valid = [c.strip() for c in zalo_chunks if len(c.strip()) > 10]
+            if len(valid) > 1:
+                return valid
+
+        # 3. Thử tách theo tiêu đề báo cáo lặp lại: 'Báo cáo ca...', 'Báo cáo tiến độ...', 'Báo cáo ngày...'
+        report_header_pattern = r'(?:^|\n)(?=(?:Báo cáo\s+(?:thi công|tiến độ|ca|ngày)|Nhật ký\s+thi công)\b)'
+        header_chunks = re.split(report_header_pattern, text, flags=re.IGNORECASE)
+        if len(header_chunks) > 1:
+            valid = [c.strip() for c in header_chunks if len(c.strip()) > 10]
+            if len(valid) > 1:
+                return valid
+
+        # Mặc định là 1 báo cáo duy nhất
+        return [text]
+
     def _guess_unit(self, category: str, sub_item: str = "") -> str:
         """Tự động suy luận đơn vị tính chuẩn ngành Xây dựng theo danh mục."""
         combined = f"{category} {sub_item}".lower()

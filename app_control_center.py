@@ -216,7 +216,7 @@ class DataBossControlApp:
         # NÚT ĐẶC BIỆT 2: DÁN NHANH BÁO CÁO (COPY & PASTE TỪ ZALO)
         btn_quick_paste = tk.Button(
             btn_grid,
-            text="📋 DÁN BÁO CÁO CŨ (COPY TỪ ZALO)",
+            text="📋 NẠP LỊCH SỬ NHIỀU CA (ZALO)",
             font=("Segoe UI", 9, "bold"),
             bg="#D97706",
             fg="#FFFFFF",
@@ -813,8 +813,8 @@ class DataBossControlApp:
         # Header Box
         h_box = tk.Frame(win, bg="#0E6655", padx=16, pady=12)
         h_box.pack(fill="x")
-        tk.Label(h_box, text="📋 NHẬP NHANH BÁO CÁO THI CÔNG TỪ ZALO", font=("Segoe UI", 12, "bold"), bg="#0E6655", fg="#FFFFFF").pack(anchor="w")
-        tk.Label(h_box, text="Copy tin nhắn báo cáo thực tế từ Zalo và Dán (Ctrl+V) vào đây để Bot bóc tách & đồng bộ ngay lập tức!", font=("Segoe UI", 9), bg="#0E6655", fg="#D1F2EB").pack(anchor="w", pady=(2, 0))
+        tk.Label(h_box, text="📋 NẠP LỊCH SỬ BÁO CÁO CÔNG TRƯỜNG (1 CA HOẶC NHIỀU CA CÙNG LÚC)", font=("Segoe UI", 11, "bold"), bg="#0E6655", fg="#FFFFFF").pack(anchor="w")
+        tk.Label(h_box, text="💡 Mẹo: Bạn có thể bôi đen copy NHIỀU TIN NHẮN cùng lúc từ Zalo (hoặc ngăn cách bằng '---') dán vào đây để nạp bức tranh toàn cảnh!", font=("Segoe UI", 9), bg="#0E6655", fg="#D1F2EB").pack(anchor="w", pady=(2, 0))
 
         # Project name selection
         body = tk.Frame(win, bg="#F4F6F8", padx=16, pady=10)
@@ -830,7 +830,7 @@ class DataBossControlApp:
         entry_proj.pack(side="left", padx=8, fill="x", expand=True)
         entry_proj.insert(0, g_name or "PMU: BĂNG HẠ TẦNG OLP")
 
-        tk.Label(body, text="Nội dung tin nhắn báo cáo Zalo (Ctrl + V để dán):", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(anchor="w", pady=(4, 2))
+        tk.Label(body, text="Nội dung tin nhắn báo cáo Zalo (Ctrl + V để dán 1 hoặc nhiều tin):", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(anchor="w", pady=(4, 2))
 
         txt_input = scrolledtext.ScrolledText(body, font=("Consolas", 10), bg="#FFFFFF", fg="#1E293B", wrap="word", relief="groove", bd=1)
         txt_input.pack(fill="both", expand=True, pady=(2, 10))
@@ -843,19 +843,51 @@ class DataBossControlApp:
                 return
 
             proj = entry_proj.get().strip() or "PMU: BĂNG HẠ TẦNG OLP"
-            self._log(f"📥 Đang bóc tách báo cáo thực tế cho dự án: [{proj}]...")
-            try:
-                res = self.brain.process_incoming_report(raw_text, sender_name="Kỹ sư (Nhập Zalo)", project_name=proj)
-                self._log(f"✅ ĐÃ NẠP THÀNH CÔNG BÁO CÁO #{res['report_id']}!")
-                self._log(f"   • Đã cập nhật vào CSDL, Excel & Bảng điều hành HTML.")
-                auto_push_to_github(f"Real-data: Báo cáo #{res['report_id']} cho [{proj}]")
-                self._log("   • Đã đồng bộ trực tuyến lên GitHub Pages.")
+            blocks = self.parser.split_multiple_reports(raw_text)
+
+            if len(blocks) > 1:
+                self._log(f"📦 PHÁT HIỆN BATCH NẠP HÀNG LOẠT: Gồm {len(blocks)} báo cáo ca riêng biệt cho dự án [{proj}]!")
+                imported_ids = []
+                for idx, block in enumerate(blocks, 1):
+                    try:
+                        res = self.brain.process_incoming_report(block, sender_name=f"Kỹ sư (Ca {idx})", project_name=proj)
+                        rep_id = res['report_id']
+                        rep_date = res['parsed'].get('report_date', '-')
+                        rep_shift = res['parsed'].get('shift_name', '-')
+                        imported_ids.append(rep_id)
+                        self._log(f"   ➔ [{idx}/{len(blocks)}] Đã nạp Báo cáo #{rep_id} ({rep_shift} - {rep_date})")
+                    except Exception as err:
+                        self._log(f"   ⚠️ Lỗi nạp khối {idx}: {err}")
+
+                self._log(f"🎉 ĐÃ HOÀN TẤT ĐỒNG BỘ {len(imported_ids)} BÁO CÁO VÀO CSDL & EXCEL SỐNG!")
+                auto_push_to_github(f"Batch-import: Nạp {len(imported_ids)} ca lịch sử cho [{proj}]")
+                self._log("   • Đã đồng bộ toàn bộ bức tranh lịch sử lên Web Dashboard.")
                 self._refresh_filter_categories()
                 self._do_search()
-                messagebox.showinfo("Thành công", f"Đã nạp thành công Báo cáo #{res['report_id']}!\nSố liệu đã được tính toán và đồng bộ vào CSDL, Excel & Web.", parent=win)
+                messagebox.showinfo(
+                    "Đồng Bộ Lịch Sử Thành Công",
+                    f"🎉 ĐÃ ĐỒNG BỘ THÀNH CÔNG BỨC TRANH TOÀN CẢNH!\n\n"
+                    f"• Đã nạp thành công: {len(imported_ids)} báo cáo ca lịch sử.\n"
+                    f"• CSDL SQLite đã cập nhật đầy đủ toàn bộ quá trình thi công.\n"
+                    f"• File Excel sống đã tính toán lại toàn bộ lũy kế & tỷ lệ hoàn thành.\n"
+                    f"• Web Dashboard đã đồng bộ trực tuyến.",
+                    parent=win
+                )
                 win.destroy()
-            except Exception as e:
-                messagebox.showerror("Lỗi", f"Không thể xử lý báo cáo: {e}", parent=win)
+            else:
+                self._log(f"📥 Đang bóc tách báo cáo thực tế cho dự án: [{proj}]...")
+                try:
+                    res = self.brain.process_incoming_report(raw_text, sender_name="Kỹ sư (Nhập Zalo)", project_name=proj)
+                    self._log(f"✅ ĐÃ NẠP THÀNH CÔNG BÁO CÁO #{res['report_id']}!")
+                    self._log(f"   • Đã cập nhật vào CSDL, Excel & Bảng điều hành HTML.")
+                    auto_push_to_github(f"Real-data: Báo cáo #{res['report_id']} cho [{proj}]")
+                    self._log("   • Đã đồng bộ trực tuyến lên GitHub Pages.")
+                    self._refresh_filter_categories()
+                    self._do_search()
+                    messagebox.showinfo("Thành công", f"Đã nạp thành công Báo cáo #{res['report_id']}!\nSố liệu đã được tính toán và đồng bộ vào CSDL, Excel & Web.", parent=win)
+                    win.destroy()
+                except Exception as e:
+                    messagebox.showerror("Lỗi", f"Không thể xử lý báo cáo: {e}", parent=win)
 
         btn_box = tk.Frame(body, bg="#F4F6F8")
         btn_box.pack(fill="x")
