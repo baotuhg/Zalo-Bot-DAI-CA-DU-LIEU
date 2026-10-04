@@ -68,7 +68,7 @@ class HtmlDashboardSyncer:
 
         return str(self.html_path)
 
-    def update_from_report(self, report_data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_from_report(self, report_data: Dict[str, Any], auto_git_push: bool = False) -> Dict[str, Any]:
         """
         Nạp dữ liệu từ báo cáo thi công của 'Đại ca dữ liệu' vào cấu trúc Dashboard HTML:
         - Tự động map các chỉ số móng, cọc, cống, bãi đúc ga vào bảng 'items', 'daily', 'yards'.
@@ -161,8 +161,19 @@ class HtmlDashboardSyncer:
 
         # 3. Ghi đè vào file HTML
         self.write_store(store)
+
+        # 4. Tự động Git commit & push lên GitHub nếu được bật
+        git_pushed = False
+        if auto_git_push:
+            try:
+                from sync_github import auto_push_to_github
+                git_pushed = auto_push_to_github(f"Auto-update: {report_data.get('shift_name')} {report_data.get('report_date')}")
+            except Exception as e:
+                print(f"[HtmlDashboardSyncer] Không push được lên git: {e}")
+
         return {
             "html_path": str(self.html_path),
             "updated_count": len(updated_summary),
-            "updated_summary": updated_summary
+            "updated_summary": updated_summary,
+            "git_pushed": git_pushed
         }
