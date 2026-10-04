@@ -830,7 +830,72 @@ class DataBossControlApp:
         entry_proj.pack(side="left", padx=8, fill="x", expand=True)
         entry_proj.insert(0, g_name or "PMU: BĂNG HẠ TẦNG OLP")
 
-        tk.Label(body, text="Nội dung tin nhắn báo cáo Zalo (Ctrl + V để dán 1 hoặc nhiều tin):", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(anchor="w", pady=(4, 2))
+        row_label = tk.Frame(body, bg="#F4F6F8")
+        row_label.pack(fill="x", pady=(4, 2))
+        tk.Label(row_label, text="Nội dung báo cáo (Ctrl+V để dán hoặc Chọn File):", font=("Segoe UI", 10, "bold"), bg="#F4F6F8").pack(side="left")
+
+        def choose_file():
+            from tkinter import filedialog
+            file_path = filedialog.askopenfilename(
+                title="Chọn file sao lưu Zalo (.txt, .json, .csv, .zip)",
+                filetypes=[
+                    ("Tất cả file hỗ trợ", "*.txt *.json *.csv *.xlsx *.zip"),
+                    ("File văn bản (*.txt)", "*.txt"),
+                    ("File JSON (*.json)", "*.json"),
+                    ("File Excel / CSV (*.xlsx, *.csv)", "*.xlsx *.csv"),
+                    ("File nén Zip (*.zip)", "*.zip")
+                ],
+                parent=win
+            )
+            if file_path:
+                try:
+                    p = Path(file_path)
+                    content = ""
+                    if p.suffix.lower() == ".txt":
+                        content = p.read_text(encoding="utf-8", errors="ignore")
+                    elif p.suffix.lower() == ".json":
+                        import json
+                        data = json.loads(p.read_text(encoding="utf-8", errors="ignore"))
+                        if isinstance(data, list):
+                            texts = [d.get("content") or d.get("message") or str(d) for d in data if isinstance(d, dict)]
+                            content = "\n---\n".join(texts)
+                        elif isinstance(data, dict):
+                            texts = [v.get("content") or str(v) for v in data.values() if isinstance(v, dict)]
+                            content = "\n---\n".join(texts)
+                        else:
+                            content = str(data)
+                    elif p.suffix.lower() == ".zip":
+                        import zipfile
+                        with zipfile.ZipFile(file_path, 'r') as z:
+                            txt_names = [n for n in z.namelist() if n.endswith(('.txt', '.json'))]
+                            all_parts = []
+                            for n in txt_names:
+                                with z.open(n) as f:
+                                    all_parts.append(f.read().decode('utf-8', errors='ignore'))
+                            content = "\n---\n".join(all_parts)
+                    else:
+                        content = p.read_text(encoding="utf-8", errors="ignore")
+
+                    if content:
+                        txt_input.delete("1.0", tk.END)
+                        txt_input.insert("1.0", content)
+                        messagebox.showinfo("Đã nạp file", f"Đã đọc thành công nội dung từ file:\n{p.name}\n\nĐộ dài: {len(content)} ký tự. Hãy bấm '🚀 BÓC TÁCH' bên dưới để nạp vào CSDL!", parent=win)
+                except Exception as ex:
+                    messagebox.showerror("Lỗi đọc file", f"Không thể đọc file: {ex}", parent=win)
+
+        btn_choose = tk.Button(
+            row_label,
+            text="📂 CHỌN FILE SAO LƯU (.TXT / .JSON / .ZIP)",
+            font=("Segoe UI", 9, "bold"),
+            bg="#1F4E79",
+            fg="#FFFFFF",
+            padx=10,
+            pady=2,
+            cursor="hand2",
+            relief="raised",
+            command=choose_file
+        )
+        btn_choose.pack(side="right")
 
         txt_input = scrolledtext.ScrolledText(body, font=("Consolas", 10), bg="#FFFFFF", fg="#1E293B", wrap="word", relief="groove", bd=1)
         txt_input.pack(fill="both", expand=True, pady=(2, 10))
