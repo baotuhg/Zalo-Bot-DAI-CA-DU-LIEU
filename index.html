@@ -196,6 +196,19 @@ label.f textarea{min-height:70px;resize:vertical}
 textarea.copybox{width:100%;min-height:260px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg)}
 @media (prefers-reduced-motion:no-preference){.btn,.chip,.card,.tab{transition:border-color .15s,background .15s,color .15s}}
 
+/* Bot Control Center */
+.bot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+.bot-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.bot-card-title{font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.bot-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;letter-spacing:.02em}
+.bot-badge.ok{background:var(--ok-soft);color:var(--ok)}
+.bot-badge.bad{background:var(--bad-soft);color:var(--bad)}
+.bot-badge.warn{background:var(--warn-soft);color:var(--warn)}
+.bot-cmd-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:16px}
+.bot-cmd-item{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.bot-cmd-code{font-family:monospace;font-size:14px;font-weight:700;color:var(--accent)}
+.bot-logs{background:#121815;color:#5CC382;font-family:Consolas,monospace;font-size:12px;padding:14px;border-radius:8px;max-height:220px;overflow-y:auto;white-space:pre-wrap;line-height:1.45;border:1px solid var(--line)}
+
 [hidden]{display:none!important}
 .savebar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12px;color:var(--muted)}
 .savebar .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:4px}
@@ -237,6 +250,7 @@ textarea.copybox{width:100%;min-height:260px;font-family:ui-monospace,Menlo,Cons
       </div>
     </div>
     <div class="actions">
+      <button class="btn" id="btnBotControl" type="button" style="background:#0E6655; color:#fff; border-color:#0E6655; font-weight:700">🤖 Điều Hành Bot &amp; Zalo <span id="botLiveDot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#5CC382; margin-left:4px"></span></button>
       <button class="btn" id="btnHead" type="button">✎ Sửa phần đầu</button>
       <button class="btn" id="btnZalo" type="button">Soạn tin Zalo</button>
       <button class="btn" id="btnPdf" type="button">Xuất PDF</button>
@@ -345,9 +359,24 @@ const loaded = {};
 let db = null, tab = "items", filter = "all", printAll = false;
 try{ const t = localStorage.getItem("td3.tab"); if (t) tab = t; }catch(e){}
 
+let botStatus = {
+  loading: false,
+  running: false,
+  pid: null,
+  zaloConnected: false,
+  zaloUser: "Đang kiểm tra...",
+  zaloUid: "",
+  cloudUrl: "https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/",
+  totalReports: 0,
+  totalItems: 0,
+  totalPiles: 0,
+  logs: ""
+};
+
 const TABS = [
   {id:"items",l:"Hạng mục ưu tiên"},{id:"ga",l:"Đúc ga"},{id:"issues",l:"Vướng mắc"},
-  {id:"daily",l:"Nhật ký ngày"},{id:"info",l:"Danh bạ & việc thường xuyên"}];
+  {id:"daily",l:"Nhật ký ngày"},{id:"info",l:"Danh bạ & việc thường xuyên"},
+  {id:"bot",l:"🤖 Điều Hành Bot & Zalo"}];
 
 const CFG_DEFAULT={code:"TiD03.5 · Tiểu đoàn 3 · Hạ tầng",title:"Bảng điều hành TĐ3",meeting:"17:00 thứ 3, 5, 7",showHelp:"Hiện",
   helpText:"Cách dùng: bấm vào dòng hoặc ô để nhập/sửa số liệu, dữ liệu tự lưu trên máy này.\nGửi người khác: bấm Lưu file HTML rồi gửi file qua Zalo. Nhận file gửi lại: bấm Gộp file nhận được.\nXuất PDF: in toàn bộ bảng, chọn máy in \"Lưu dưới dạng PDF\"."};
@@ -398,11 +427,11 @@ function renderKpis(){
 /* ---------- Tabs ---------- */
 function renderTabs(){
   const host=$("#tabs"); host.replaceChildren();
-  const counts = {items:S.items.length, ga:S.yards.length, issues:openIssues().length, daily:S.daily.length, info:S.contacts.length};
+  const counts = {items:S.items.length, ga:S.yards.length, issues:openIssues().length, daily:S.daily.length, info:S.contacts.length, bot:botStatus.running?"ON":"OFF"};
   for (const t of TABS){
     host.append(h("button",{class:"tab",role:"tab",type:"button","aria-selected":String(tab===t.id),
-      onclick:()=>{tab=t.id;filter="all";try{localStorage.setItem("td3.tab",tab)}catch(e){};render();}},
-      t.l, h("span",{class:"cnt"+(t.id==="issues"&&counts.issues?" alert":""),text:String(counts[t.id])})));
+      onclick:()=>{tab=t.id;filter="all";try{localStorage.setItem("td3.tab",tab)}catch(e){};render();},
+      t.l, h("span",{class:"cnt"+(t.id==="issues"&&counts.issues?" alert":"")+(t.id==="bot"?(botStatus.running?" ok":" warn"):""),text:String(counts[t.id])})));
   }
 }
 
@@ -587,6 +616,154 @@ function renderInfo(){
   p.append(loadingOr("contacts",st));
 }
 
+/* ---------- Bot Control Center ---------- */
+function updateBotStatusIndicator(){
+  const dot = $("#botLiveDot");
+  if (dot) dot.style.background = botStatus.running ? "#5CC382" : (botStatus.zaloConnected ? "#E7A93A" : "#EE7A6C");
+}
+
+async function checkBotApiStatus(){
+  const apiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "http://127.0.0.1:8080";
+  try {
+    const res = await fetch(`${apiBase}/api/status`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      const d = await res.json();
+      botStatus.running = d.bot_running;
+      botStatus.pid = d.bot_pid;
+      botStatus.zaloConnected = d.zalo_connected;
+      botStatus.zaloUser = d.zalo_user;
+      botStatus.zaloUid = d.zalo_uid;
+      botStatus.totalReports = d.total_reports;
+      botStatus.totalItems = d.total_items;
+      botStatus.totalPiles = d.total_piles;
+      updateBotStatusIndicator();
+      return true;
+    }
+  } catch(e) {}
+  updateBotStatusIndicator();
+  return false;
+}
+
+async function callBotApi(endpoint, method="POST"){
+  const apiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "http://127.0.0.1:8080";
+  try {
+    toast("Đang gửi lệnh xử lý...");
+    const res = await fetch(`${apiBase}${endpoint}`, { method });
+    const d = await res.json();
+    toast(d.message || "Đã thực hiện xong!");
+    await checkBotApiStatus();
+    if (tab === "bot") render();
+  } catch(e) {
+    toast("Không kết nối được máy chủ nội bộ. Hãy chạy file CHAY_HE_THONG.bat trên máy tính!");
+  }
+}
+
+function renderBotControl(){
+  const p = $("#panel");
+  const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+
+  p.append(phead(
+    "Trung tâm điều hành Bot Zalo & Đồng bộ Cloud",
+    isLocal 
+      ? "Quản trị Bot Realtime, quét QR kết nối Zalo và đồng bộ Cloud 1-click không cần GitHub Desktop." 
+      : "Chế độ Giám sát Cloud (Đang xem qua Internet). Để điều khiển máy tính, hãy dùng lệnh Zalo (/tiendo, /coc) hoặc chạy CHAY_HE_THONG.bat trên máy.",
+    h("div", {style:"display:flex;gap:8px"},
+      h("button", {class:"btn sm", type:"button", onclick:async ()=>{ await checkBotApiStatus(); render(); toast("Đã làm mới trạng thái!"); }, text:"🔄 Làm mới"})
+    )
+  ));
+
+  // 1. Grid of Status Cards
+  const grid = h("div", {class:"bot-grid"});
+
+  // Card 1: Bot Realtime
+  const botBadge = h("span", {
+    class: "bot-badge " + (botStatus.running ? "ok" : "bad"),
+    text: botStatus.running ? `🟢 ĐANG CHẠY (PID: ${botStatus.pid||"Live"})` : "🔴 ĐANG TẮT"
+  });
+  grid.append(h("div", {class:"bot-card"},
+    h("div", {class:"bot-card-title"}, h("span", {text:"🤖 Bot Realtime"}), botBadge),
+    h("div", {class:"detail", text:"Tự động nghe nhóm Zalo, bóc tách tiến độ cọc, ca máy và ghi vào Excel / DB."}),
+    h("div", {style:"display:flex;gap:8px;margin-top:auto"},
+      botStatus.running 
+        ? h("button", {class:"btn sm danger", type:"button", onclick:()=>callBotApi("/api/bot/stop"), text:"⏹ Dừng Bot"})
+        : h("button", {class:"btn sm primary", type:"button", onclick:()=>callBotApi("/api/bot/start"), text:"▶ Khởi Động Bot"})
+    )
+  ));
+
+  // Card 2: Zalo Connection
+  const zaloBadge = h("span", {
+    class: "bot-badge " + (botStatus.zaloConnected ? "ok" : "warn"),
+    text: botStatus.zaloConnected ? "🟢 ĐÃ KẾT NỐI" : "🟡 CHƯA KẾT NỐI"
+  });
+  grid.append(h("div", {class:"bot-card"},
+    h("div", {class:"bot-card-title"}, h("span", {text:"📱 Kết Nối Zalo"}), zaloBadge),
+    h("div", {class:"detail", text: botStatus.zaloConnected ? `Tài khoản: ${botStatus.zaloUser} (${botStatus.zaloUid||"Cá nhân"})` : "Chưa phát hiện phiên đăng nhập Zalo."}),
+    h("div", {style:"display:flex;gap:8px;margin-top:auto"},
+      h("button", {class:"btn sm", type:"button", onclick:()=>callBotApi("/api/zalo/login"), text:"📲 Quét Mã QR Zalo"})
+    )
+  ));
+
+  // Card 3: Cloud GitHub Pages Sync
+  grid.append(h("div", {class:"bot-card"},
+    h("div", {class:"bot-card-title"}, h("span", {text:"☁️ Đồng Bộ Cloud"}), h("span", {class:"bot-badge ok", text:"GitHub Pages"})),
+    h("div", {class:"detail", text:"Đẩy toàn bộ dữ liệu mới nhất lên Web Cloud di động mà không cần mở GitHub Desktop."}),
+    h("div", {style:"display:flex;gap:8px;margin-top:auto"},
+      h("button", {class:"btn sm primary", type:"button", onclick:()=>callBotApi("/api/sync"), text:"⚡ Đồng Bộ Ngay"}),
+      h("button", {class:"btn sm ghost", type:"button", onclick:()=>window.open("https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/","_blank"), text:"Mở Cloud ↗"})
+    )
+  ));
+
+  // Card 4: Excel & Database
+  grid.append(h("div", {class:"bot-card"},
+    h("div", {class:"bot-card-title"}, h("span", {text:"📊 Báo Cáo Excel & DB"}), h("span", {class:"bot-badge ok", text:"WBS Sống"})),
+    h("div", {class:"detail", text:`Báo cáo: ${botStatus.totalReports} ca · Cấu kiện: ${botStatus.totalItems} · Cọc: ${botStatus.totalPiles}`}),
+    h("div", {style:"display:flex;gap:8px;margin-top:auto"},
+      h("button", {class:"btn sm", type:"button", onclick:()=>callBotApi("/api/open-excel"), text:"📊 Mở File Excel"})
+    )
+  ));
+
+  p.append(grid);
+
+  // 2. Tra cứu lệnh Zalo cho Điện Thoại
+  p.append(phead("📱 Bảng Lệnh Zalo Cho Điện Thoại","Gõ trực tiếp các lệnh này vào nhóm Zalo hoặc chat riêng với Bot để tra cứu tiến độ mọi lúc mọi nơi."));
+  const cmds = [
+    { cmd: "/tiendo", desc: "Xem báo cáo tổng hợp tiến độ thi công hôm nay của tất cả các mũi." },
+    { cmd: "/coc", desc: "Xem chi tiết tiến độ cọc khoan nhồi, cọc đúc sẵn từng mố trụ." },
+    { cmd: "/canhbao", desc: "Xem danh sách các mũi thi công bị chậm, sự cố ca máy hoặc thời tiết xấu." },
+    { cmd: "/help", desc: "Xem danh mục hướng dẫn đầy đủ các tính năng của Đại Ca Dữ Liệu." }
+  ];
+  const cmdList = h("div", {class:"bot-cmd-list"});
+  for (const c of cmds) {
+    cmdList.append(h("div", {class:"bot-cmd-item"},
+      h("div", {style:"display:flex;justify-content:space-between;align-items:center"},
+        h("span", {class:"bot-cmd-code", text:c.cmd}),
+        h("button", {class:"btn sm ghost", type:"button", onclick:()=>copyText(c.cmd), text:"Sao chép"})
+      ),
+      h("div", {class:"detail", text:c.desc})
+    ));
+  }
+  p.append(cmdList);
+
+  // 3. Live Activity Logs
+  p.append(phead("📜 Nhật Ký Hoạt Động (Live Terminal)", "Xem thông tin bóc tách tin nhắn và trạng thái đồng bộ thời gian thực.",
+    h("button", {class:"btn sm ghost", type:"button", onclick:async ()=>{
+      try {
+        const apiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "http://127.0.0.1:8080";
+        const res = await fetch(`${apiBase}/api/logs`);
+        const d = await res.json();
+        botStatus.logs = d.logs || "Chưa có nhật ký.";
+        render();
+        toast("Đã tải lại nhật ký!");
+      } catch(e){
+        toast("Không lấy được nhật ký.");
+      }
+    }, text:"🔄 Tải lại log"})
+  ));
+
+  const logBox = h("pre", {class:"bot-logs", text: botStatus.logs || "[Hệ thống] Nhấn nút 'Làm mới' hoặc 'Tải lại log' để xem nhật ký hoạt động của Bot."});
+  p.append(logBox);
+}
+
 /* ---------- Editor ---------- */
 function openEditor(coll, doc, preset){
   const sch = SCHEMA[coll]; const isNew = !doc; const val = {...(preset||doc||{})};
@@ -693,7 +870,7 @@ $("#btnAdd").onclick=()=>{
 function render(){
   renderHeader(); renderKpis(); renderTabs();
   const p=$("#panel"); p.replaceChildren();
-  const R={items:renderItems,ga:renderGa,issues:renderIssues,daily:renderDaily,info:renderInfo};
+  const R={items:renderItems,ga:renderGa,issues:renderIssues,daily:renderDaily,info:renderInfo,bot:renderBotControl};
   if (printAll){ const keep=filter; filter="all"; for (const t of TABS){ p.append(h("div",{class:"print-title",text:t.l})); R[t.id](); } filter=keep; return; }
   (R[tab]||renderItems)();
 }
@@ -782,5 +959,17 @@ function endPrint(){ printAll=false; render(); }
 window.addEventListener("beforeprint",startPrint);
 window.addEventListener("afterprint",endPrint);
 $("#btnPdf").onclick=()=>{ startPrint(); setTimeout(()=>window.print(),50); };
+
+const btnBot = $("#btnBotControl");
+if (btnBot) {
+  btnBot.onclick = () => {
+    tab = "bot";
+    try { localStorage.setItem("td3.tab", "bot"); } catch(e) {}
+    render();
+  };
+}
+
+checkBotApiStatus().then(render);
+setInterval(checkBotApiStatus, 4000);
 })();
 </script></body></html>

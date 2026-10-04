@@ -451,3 +451,23 @@ class ConstructionDB:
                     pass
             conn.commit()
             cursor.execute("VACUUM")
+
+    def get_db_summary(self) -> Dict[str, Any]:
+        """Lấy số liệu thống kê tổng quát của cơ sở dữ liệu."""
+        with self._connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM shift_reports")
+            total_reports = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM progress_items")
+            total_items = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM pile_details")
+            total_piles = cursor.fetchone()[0]
+            cursor.execute("SELECT MAX(report_date) FROM shift_reports")
+            row = cursor.fetchone()
+            last_date = row[0] if row and row[0] else "Chưa có"
+            return {
+                "total_reports": total_reports,
+                "total_progress_items": total_items,
+                "total_piles": total_piles,
+                "last_report_date": last_date
+            }
