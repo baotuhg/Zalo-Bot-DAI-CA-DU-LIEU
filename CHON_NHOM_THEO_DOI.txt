@@ -1,0 +1,9 @@
+# ====================================================================
+#   HƯỚNG DẪN CẤU HÌNH NHÓM ZALO CHO "ĐẠI CA DỮ LIỆU" THEO DÕI
+# ====================================================================
+# - Mặc định để trống hoặc ghi "ALL": Bot sẽ tự động quét và theo dõi 
+#   TẤT CẢ các nhóm thi công / công trình trên Zalo của bạn.
+# - Nếu muốn bot CHỈ THEO DÕI DUY NHẤT 1 NHÓM, hãy dán chính xác tên nhóm 
+#   vào bên dưới (ví dụ: PMU: BĂNG HẠ TẦNG OLP hoặc KT + CHỈ HUY CT 307):
+
+PMU: BĂNG HẠ TẦNG OLP

@@ -42,6 +42,21 @@ class DataBossListener:
         content_lower = content.lower()
 
         # 1. Kiểm tra xem có phải lệnh điều hành nhanh không
+        if content_lower in ["/theodoi", "theo dõi", "/kichhoat", "kích hoạt", "@đại ca theo dõi"]:
+            self.bridge.send_typing(thread_id)
+            if msg_id:
+                self.bridge.add_reaction(thread_id, str(msg_id), reaction="heart")
+            reply = (
+                f"✅ **[ĐÃ KÍCH HOẠT GIÁM SÁT NHÓM NÀY]**\n"
+                f"━━━━━━━━━━━━━━━━━━━\n"
+                f"Đại ca dữ liệu đã nhận lệnh từ @{sender_name}!\n"
+                f"Từ bây giờ, mọi báo cáo ca thi công và ảnh hiện trường gửi vào nhóm sẽ được tự động bóc tách, lưu trữ và đồng bộ tức thì lên Web Dashboard:\n"
+                f"👉 https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/\n\n"
+                f"Anh em kỹ sư cứ bắn báo cáo ca bình thường nhé! 🚀"
+            )
+            self.bridge.send_message(reply, thread_id=thread_id)
+            return
+
         if content_lower in ["/help", "help", "hướng dẫn", "/huongdan"]:
             self.bridge.send_typing(thread_id)
             reply = self.brain.get_help_message()

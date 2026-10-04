@@ -40,25 +40,47 @@ def main():
     print("-" * 65)
     print("🔍 Đang quét các nhóm dự án trên Zalo của bạn...")
 
+    # Đọc cấu hình nhóm chỉ định từ file CHON_NHOM_THEO_DOI.txt
+    config_file = Path(__file__).resolve().parent / "CHON_NHOM_THEO_DOI.txt"
+    chosen_keyword = ""
+    if config_file.exists():
+        for line in config_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                chosen_keyword = line
+                break
+
     target_threads = []
     try:
         import httpx
         res = httpx.get(f"{bridge.base_url}/groups", timeout=6.0)
         if res.status_code == 200:
             groups = res.json().get("data", [])
-            for g in groups:
-                g_name = g.get("name", "")
-                g_id = g.get("groupId")
-                # Lọc các nhóm công trường / thi công / dự án
-                if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS", "HỒ SƠ", "TDA2", "CAO TỐC"]):
-                    target_threads.append((g_id, g_name))
-                    print(f"  👉 [ĐANG THEO DÕI] Nhóm: '{g_name}' (ID: {g_id})")
+            
+            # TH 1: Người dùng chỉ định nhóm cụ thể trong file CHON_NHOM_THEO_DOI.txt
+            if chosen_keyword and chosen_keyword.upper() != "ALL":
+                matched = [g for g in groups if chosen_keyword.lower() in g.get("name", "").lower()]
+                if matched:
+                    for g in matched:
+                        target_threads.append((g.get("groupId"), g.get("name", "")))
+                        print(f"  🎯 [KHÓA MỤC TIÊU] Nhóm chỉ định: '{g.get('name')}' (ID: {g.get('groupId')})")
+                else:
+                    print(f"  ⚠️ Chưa tìm thấy nhóm có tên '{chosen_keyword}' trên Zalo. Sẽ tự động quét các nhóm thi công khác.")
+
+            # TH 2: Nếu để ALL hoặc chưa tìm thấy nhóm chỉ định -> Quét toàn bộ nhóm công trường
+            if not target_threads:
+                for g in groups:
+                    g_name = g.get("name", "")
+                    g_id = g.get("groupId")
+                    if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS", "HỒ SƠ", "TDA2", "CAO TỐC"]):
+                        target_threads.append((g_id, g_name))
+                        print(f"  👉 [ĐANG THEO DÕI] Nhóm: '{g_name}' (ID: {g_id})")
     except Exception as e:
         print(f"Lỗi lấy danh sách nhóm: {e}")
 
     if not target_threads:
-        fallback_name = Config.DEFAULT_GROUP_NAME
-        print(f"  ℹ️ Tạm thời lắng nghe nhóm mặc định trong cấu hình: [{fallback_name}]")
+        fallback_name = chosen_keyword or Config.DEFAULT_GROUP_NAME
+        print(f"  ℹ️ Lắng nghe nhóm: [{fallback_name}]")
         target_threads.append((fallback_name, fallback_name))
 
     print("\n" + "=" * 65)
