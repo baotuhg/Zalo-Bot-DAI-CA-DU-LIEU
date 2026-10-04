@@ -1,9 +1,10 @@
 @echo off
 chcp 65001 >nul
 set PYTHONIOENCODING=utf-8
-title Bot Zalo - Dai Ca Du Lieu
+title 2. Bot Zalo Realtime - Dai Ca Du Lieu
 echo ======================================================================
-echo          🤖 BOT ZALO "ĐẠI CA DỮ LIỆU" - DỰ ÁN CÔNG TRƯỜNG
+echo         [BƯỚC 2] BOT ZALO REALTIME TỰ HÀNH 100%%
+echo      (Tự động bóc tách báo cáo từ các nhóm Zalo công trường)
 echo ======================================================================
 echo.
 cd /d "%~dp0"

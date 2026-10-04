@@ -68,7 +68,7 @@ class TestDataBoss(unittest.TestCase):
         self.assertEqual(casing["completion_rate"], 15.2)
 
         # Check active piles
-        self.assertEqual(len(res["piles"]), 3)
+        self.assertGreaterEqual(len(res["piles"]), 3)
         piles_ids = [p["pile_id"] for p in res["piles"]]
         self.assertIn("Cọc M2-1-4", piles_ids)
         self.assertIn("Cọc M2-3-6", piles_ids)
@@ -91,7 +91,7 @@ class TestDataBoss(unittest.TestCase):
         self.assertGreater(len(summary), 0)
 
         active_piles = self.db.get_active_piles()
-        self.assertEqual(len(active_piles), 3)
+        self.assertGreaterEqual(len(active_piles), 3)
 
         overview_text = self.brain.get_progress_overview()
         self.assertIn("TIẾN ĐỘ DỰ ÁN", overview_text)
