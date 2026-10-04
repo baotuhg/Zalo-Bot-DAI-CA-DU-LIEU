@@ -17,9 +17,11 @@ def main():
     bridge = ZaloBridge()
     conn_status = bridge.check_connection()
     if not conn_status.get("authenticated", False):
-        print(f"[CẢNH BÁO] Chưa kết nối được Zalo Daemon tại {bridge.base_url}")
-        print(f"Chi tiết: {conn_status.get('error', 'Chưa đăng nhập')}")
-        print("Vui lòng đảm bảo Zalo Personal Daemon đang chạy trên cổng 3712.")
+        print(f"❌ [CHƯA KẾT NỐI ĐƯỢC ZALO DAEMON TẠI {bridge.base_url}]")
+        print("👉 Vui lòng mở thêm 1 cửa sổ PowerShell và chạy lệnh sau để kết nối:")
+        print("   powershell -ExecutionPolicy Bypass -File C:\\Users\\baotu\\.zalo-personal-mcp\\connect.ps1")
+        print("-" * 65)
+        print("Sau khi quét mã QR và đăng nhập thành công, hãy chạy lại lệnh này nhé!")
         return
 
     user_name = conn_status.get("displayName", "Người dùng Zalo")
@@ -28,33 +30,43 @@ def main():
     db = ConstructionDB()
     parser = ConstructionReportParser()
     excel_syncer = ConstructionExcelSyncer()
-    brain = DataBossBrain(db, excel_syncer, parser)
+    html_syncer = HtmlDashboardSyncer()
+    brain = DataBossBrain(db, excel_syncer, parser, html_syncer)
     listener = DataBossListener(brain, bridge)
 
     print(f"📁 Cơ sở dữ liệu: {db.db_path}")
     print(f"📊 Báo cáo Excel: {excel_syncer.excel_path}")
-    print("\n[ĐẠI CA DỮ LIỆU ĐANG LẮNG NGHE CÁC NHÓM CÔNG TRƯỜNG...]")
-    print("Nhấn Ctrl+C để dừng bot.\n")
+    print(f"🌐 Dashboard Web: {html_syncer.html_path}")
+    print("-" * 65)
+    print("🔍 Đang quét các nhóm dự án trên Zalo của bạn...")
 
-    # Lấy danh sách các nhóm Zalo để theo dõi
     target_threads = []
     try:
         import httpx
-        res = httpx.get(f"{bridge.base_url}/groups", timeout=5.0)
+        res = httpx.get(f"{bridge.base_url}/groups", timeout=6.0)
         if res.status_code == 200:
             groups = res.json().get("data", [])
             for g in groups:
                 g_name = g.get("name", "")
-                # Tìm các nhóm có tên liên quan đến thi công / công trình / PMU
-                if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS"]):
-                    target_threads.append((g.get("groupId"), g_name))
-                    print(f"  👉 Giám sát nhóm: [{g_name}] (ID: {g.get('groupId')})")
+                g_id = g.get("groupId")
+                # Lọc các nhóm công trường / thi công / dự án
+                if any(k in g_name.upper() for k in ["PMU", "OLP", "BĂNG HẠ TẦNG", "307", "CẦU", "THI CÔNG", "TIẾN ĐỘ", "KCS", "HỒ SƠ", "TDA2", "CAO TỐC"]):
+                    target_threads.append((g_id, g_name))
+                    print(f"  👉 [ĐANG THEO DÕI] Nhóm: '{g_name}' (ID: {g_id})")
     except Exception as e:
         print(f"Lỗi lấy danh sách nhóm: {e}")
 
     if not target_threads:
-        print("  ⚠️ Không tìm thấy nhóm dự án tự động, sẽ lắng nghe theo cấu hình mặc định.")
-        target_threads.append((Config.DEFAULT_GROUP_NAME, Config.DEFAULT_GROUP_NAME))
+        fallback_name = Config.DEFAULT_GROUP_NAME
+        print(f"  ℹ️ Tạm thời lắng nghe nhóm mặc định trong cấu hình: [{fallback_name}]")
+        target_threads.append((fallback_name, fallback_name))
+
+    print("\n" + "=" * 65)
+    print(f" 🤖 'ĐẠI CA DỮ LIỆU' ĐANG BẢO VỆ & GIÁM SÁT {len(target_threads)} NHÓM DỰ ÁN")
+    print("    Mọi báo cáo ca, ảnh thi công sẽ được bóc tách và đẩy lên:")
+    print("    👉 https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/")
+    print("    Nhấn Ctrl+C để dừng bot bất cứ lúc nào.")
+    print("=" * 65 + "\n")
 
     # Vòng lặp lắng nghe liên tục
     try:
