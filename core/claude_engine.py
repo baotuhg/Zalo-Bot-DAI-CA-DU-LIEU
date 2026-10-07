@@ -25,7 +25,7 @@ class ClaudeEngine:
         else:
             self.base_url = getattr(Config, "ANTHROPIC_BASE_URL", "") or os.getenv("ANTHROPIC_BASE_URL", "")
 
-        self.model = model or getattr(Config, "CLAUDE_MODEL", "") or os.getenv("CLAUDE_MODEL", "claude-haiku-4.5")
+        self.model = model or getattr(Config, "CLAUDE_MODEL", "") or os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
         self._client = None
         self._init_client()
 
