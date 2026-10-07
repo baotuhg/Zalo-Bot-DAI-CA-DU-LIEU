@@ -44,9 +44,10 @@ class Config:
     ZALO_DAEMON_URL: str = os.getenv("ZALO_DAEMON_URL", "http://127.0.0.1:3712")
     DEFAULT_GROUP_NAME: str = os.getenv("DEFAULT_GROUP_NAME", "307 HỒ SƠ SẠT LỞ")
     
-    # AI Config (Claude Anthropic / Gemini)
+    # AI Config (Claude Anthropic / Gemini / Gateway)
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "claude").lower()
+    ANTHROPIC_BASE_URL: str = os.getenv("ANTHROPIC_BASE_URL", "https://api.bddevlab.online")
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
+    CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-haiku-4.5")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

@@ -14,18 +14,31 @@ class ClaudeEngine:
     - Phân tích rủi ro, dự báo tiến độ và sinh câu trả lời sắc sảo phong cách 'Đại Ca Dữ Liệu'.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or Config.ANTHROPIC_API_KEY or os.getenv("ANTHROPIC_API_KEY", "")
-        self.model = model or Config.CLAUDE_MODEL or "claude-3-5-haiku-20241022"
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None, base_url: Optional[str] = None):
+        if api_key is not None:
+            self.api_key = api_key
+        else:
+            self.api_key = getattr(Config, "ANTHROPIC_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", "")
+
+        if base_url is not None:
+            self.base_url = base_url
+        else:
+            self.base_url = getattr(Config, "ANTHROPIC_BASE_URL", "") or os.getenv("ANTHROPIC_BASE_URL", "")
+
+        self.model = model or getattr(Config, "CLAUDE_MODEL", "") or os.getenv("CLAUDE_MODEL", "claude-haiku-4.5")
         self._client = None
         self._init_client()
 
     def _init_client(self):
         """Khởi tạo Anthropic Client nếu có API Key hợp lệ."""
-        if self.api_key and self.api_key.startswith("sk-ant-"):
+        clean_key = self.api_key.strip() if self.api_key else ""
+        if clean_key and len(clean_key) > 8:
             try:
                 import anthropic
-                self._client = anthropic.Anthropic(api_key=self.api_key)
+                kwargs = {"api_key": clean_key}
+                if self.base_url:
+                    kwargs["base_url"] = self.base_url.strip().rstrip("/")
+                self._client = anthropic.Anthropic(**kwargs)
             except Exception as e:
                 print(f"[ClaudeEngine] Lỗi khởi tạo Anthropic Client: {e}")
                 self._client = None
@@ -36,6 +49,15 @@ class ClaudeEngine:
     def is_available(self) -> bool:
         """Kiểm tra xem Claude API đã sẵn sàng hoạt động hay chưa."""
         return self._client is not None and bool(self.api_key)
+
+    @staticmethod
+    def _extract_text(response) -> str:
+        """Trích xuất chuỗi văn bản an toàn từ response, xử lý cả khi có ThinkingBlock."""
+        parts = []
+        for block in getattr(response, "content", []):
+            if hasattr(block, "text") and block.text:
+                parts.append(block.text)
+        return "".join(parts).strip()
 
     def extract_report(self, text: str, sender_name: str = "") -> Optional[Dict[str, Any]]:
         """
@@ -92,11 +114,10 @@ class ClaudeEngine:
             response = self._client.messages.create(
                 model=self.model,
                 max_tokens=1500,
-                temperature=0.1,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_content}]
             )
-            raw_text = response.content[0].text.strip()
+            raw_text = self._extract_text(response)
             
             # Làm sạch nếu model bọc trong ```json ... ```
             json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw_text, re.DOTALL)
@@ -144,11 +165,10 @@ class ClaudeEngine:
             response = self._client.messages.create(
                 model=self.model,
                 max_tokens=1000,
-                temperature=0.3,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_content}]
             )
-            return response.content[0].text.strip()
+            return self._extract_text(response)
         except Exception as e:
             return f"❌ Lỗi khi hỏi Claude Haiku: {e}"
 
@@ -173,11 +193,10 @@ class ClaudeEngine:
             response = self._client.messages.create(
                 model=self.model,
                 max_tokens=800,
-                temperature=0.3,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_content}]
             )
-            return response.content[0].text.strip()
+            return self._extract_text(response)
         except Exception as e:
             print(f"[ClaudeEngine] Lỗi phân tích rủi ro: {e}")
             return ""

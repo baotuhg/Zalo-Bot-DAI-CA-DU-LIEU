@@ -7,6 +7,7 @@ from core.report_parser import ConstructionReportParser
 from database.construction_db import ConstructionDB
 from core.excel_syncer import ConstructionExcelSyncer
 from core.data_boss_brain import DataBossBrain
+from core.claude_engine import ClaudeEngine
 
 SAMPLE_REPORT = """Báo cáo thi công cuối ca đêm 26/9/2026:
 * Nhà thầu SGC Cầu 5B:
@@ -35,7 +36,8 @@ class TestDataBoss(unittest.TestCase):
         self.db = ConstructionDB(db_path=self.db_path)
         self.parser = ConstructionReportParser()
         self.syncer = ConstructionExcelSyncer(excel_path=self.excel_path)
-        self.brain = DataBossBrain(self.db, self.syncer, self.parser)
+        self.claude = ClaudeEngine(api_key="")
+        self.brain = DataBossBrain(self.db, self.syncer, self.parser, claude_engine=self.claude)
 
     def tearDown(self):
         del self.brain
