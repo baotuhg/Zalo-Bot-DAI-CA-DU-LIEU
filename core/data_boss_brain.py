@@ -4,12 +4,14 @@ from database.construction_db import ConstructionDB
 from core.report_parser import ConstructionReportParser
 from core.excel_syncer import ConstructionExcelSyncer
 from core.html_dashboard_syncer import HtmlDashboardSyncer
+from core.claude_engine import ClaudeEngine
 
 class DataBossBrain:
     """
     Bộ não điều hành của 'Đại ca dữ liệu' (Chief Data Officer Bot).
     Chuyên trách:
-    - Tiếp nhận và xác nhận số liệu báo cáo ca/ngày công trường.
+    - Tiếp nhận và xác nhận số liệu báo cáo ca/ngày công trường (sử dụng Claude Haiku AI + Regex dự phòng).
+    - Trả lời thông minh các câu hỏi của kỹ sư bằng Claude Haiku dựa trên dữ liệu thật trong SQLite DB.
     - Phân tích tiến độ, cảnh báo các điểm nghẽn thi công.
     - Tự động đồng bộ Database, Excel sống & Web App Dashboard HTML.
     - Trả lời các lệnh điều hành (/tiendo, /baocao, /canhbao, /coc, /excel, /web).
@@ -20,20 +22,29 @@ class DataBossBrain:
         db: ConstructionDB,
         excel_syncer: ConstructionExcelSyncer,
         parser: ConstructionReportParser,
-        html_syncer: Optional[HtmlDashboardSyncer] = None
+        html_syncer: Optional[HtmlDashboardSyncer] = None,
+        claude_engine: Optional[ClaudeEngine] = None
     ):
         self.db = db
         self.excel_syncer = excel_syncer
         self.parser = parser
         self.html_syncer = html_syncer or HtmlDashboardSyncer()
+        self.claude_engine = claude_engine or ClaudeEngine()
 
     def process_incoming_report(self, text: str, sender_name: str = "", media_urls: Optional[List[str]] = None, project_name: str = "PMU BĂNG HẠ TẦNG OLP") -> Dict[str, Any]:
         """
         Xử lý toàn bộ chu trình nạp báo cáo từ tin nhắn:
-        Bóc tách -> Lưu DB -> Cập nhật Excel -> Cập nhật Web Dashboard HTML -> Sinh phản hồi báo cáo điều hành.
+        Bóc tách (Claude Haiku AI -> fallback Regex) -> Lưu DB -> Cập nhật Excel -> Cập nhật Web Dashboard HTML -> Sinh phản hồi báo cáo điều hành.
         """
-        # 1. Bóc tách số liệu
-        parsed = self.parser.parse(text, sender_name=sender_name)
+        # 1. Bóc tách số liệu: Ưu tiên Claude Haiku nếu có API Key, tự động dự phòng Regex
+        parsed = None
+        if self.claude_engine and self.claude_engine.is_available:
+            parsed = self.claude_engine.extract_report(text, sender_name=sender_name)
+            if parsed and parsed.get("items"):
+                print("[DataBossBrain] ⚡ Bóc tách báo cáo thành công bằng Claude Haiku AI!")
+
+        if not parsed or not parsed.get("items"):
+            parsed = self.parser.parse(text, sender_name=sender_name)
 
         # 2. Lưu vào SQLite DB
         report_id = self.db.save_report(parsed, project_name=project_name, media_urls=media_urls)
@@ -243,6 +254,30 @@ class DataBossBrain:
             f"• `/coc` : Xem chi tiết các tim cọc đang thi công dở dang.\n"
             f"• `/canhbao` : Phân tích điểm nghẽn, hạng mục chậm và các tim cọc cần nghiệm thu.\n"
             f"• `/excel` : Lấy đường dẫn file Excel báo cáo tiến độ chuẩn PMU.\n"
+            f"• `/ai [câu hỏi]` : Hỏi đáp tiến độ với trợ lý AI Claude Haiku (hoặc tag @đại ca).\n"
             f"• `/help` : Xem danh sách lệnh điều hành này.\n"
             f"━━━━━━━━━━━━━━━━━━━"
         )
+
+    def ask_ai(self, query: str, sender_name: str = "Chỉ huy") -> str:
+        """
+        Gửi câu hỏi của kỹ sư cùng toàn bộ ngữ cảnh tiến độ công trường cho Claude Haiku trả lời.
+        """
+        if not self.claude_engine or not self.claude_engine.is_available:
+            return (
+                "🤖 **[ĐẠI CA DỮ LIỆU - TRỢ LÝ AI CLAUDE HAIKU]**\n"
+                "━━━━━━━━━━━━━━━━━━━\n"
+                f"Chào @{sender_name}! Tôi đã sẵn sàng trở thành trợ lý AI trả lời mọi câu hỏi tiến độ cho anh em.\n\n"
+                "👉 **Chỉ còn 1 bước cuối cùng:**\n"
+                "Bạn hãy mở file `.env` trên máy tính và dán khóa API của Claude vào dòng:\n"
+                "`ANTHROPIC_API_KEY=sk-ant-api03-...`\n\n"
+                "Sau khi dán key, bạn có thể hỏi tôi bất kỳ câu gì: tình hình tim cọc, nhà thầu nào chậm, so sánh khối lượng... 🚀"
+            )
+
+        db_context = {
+            "summary_items": self.db.get_latest_project_summary(),
+            "active_piles": self.db.get_active_piles(),
+            "shift_history": self.db.get_shift_history(limit=5),
+            "stats": self.db.get_db_summary()
+        }
+        return self.claude_engine.answer_query(query, db_context, sender_name=sender_name)

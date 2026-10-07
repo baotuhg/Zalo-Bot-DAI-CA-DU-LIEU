@@ -27,6 +27,11 @@ Hệ sinh thái tự động hóa thu thập, bóc tách và quản trị dữ l
    * Bảng điều hành Web được host miễn phí 100% trên GitHub Pages để toàn bộ Ban điều hành & Chỉ huy công trường xem trực tuyến trên điện thoại:
    * 👉 **Link Web:** [https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/](https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/)
 
+5. **Trợ Lý Trí Tuệ Nhân Tạo Claude 3.5 Haiku (Anthropic AI):**
+   * 🧠 **Bóc tách báo cáo tự do:** Đọc hiểu văn phong công trường viết tắt, lộn xộn để chuyển thành bảng dữ liệu chuẩn.
+   * 💬 **Hỏi đáp tiến độ trên Zalo:** Gõ `/ai [câu hỏi]` hoặc `@đại ca [câu hỏi]` để hỏi trực tiếp số liệu từ SQLite DB.
+   * 🛡️ **Dự phòng kép (Dual-Engine):** Tự động dùng Regex nếu chưa có key Claude, đảm bảo hệ thống luôn luôn chạy ổn định.
+
 ---
 
 ## 📂 CẤU TRÚC DỰ ÁN TINH GỌN

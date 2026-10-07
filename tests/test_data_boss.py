@@ -112,5 +112,18 @@ class TestDataBoss(unittest.TestCase):
             sync_res = html_syncer.update_from_report(res)
             self.assertGreater(sync_res["updated_count"], 0)
 
+    def test_claude_engine_fallback(self):
+        from core.claude_engine import ClaudeEngine
+        engine = ClaudeEngine(api_key="")
+        self.assertFalse(engine.is_available)
+        self.assertIsNone(engine.extract_report(SAMPLE_REPORT))
+        res = engine.answer_query("Tiến độ thế nào?", {})
+        self.assertIn("CHƯA KÍCH HOẠT CLAUDE API", res)
+
+    def test_brain_ask_ai(self):
+        reply = self.brain.ask_ai("Tiến độ cọc M2?", sender_name="Tú")
+        self.assertIn("CLAUDE HAIKU", reply)
+        self.assertIn("ANTHROPIC_API_KEY", reply)
+
 if __name__ == "__main__":
     unittest.main()

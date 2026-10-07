@@ -94,6 +94,13 @@ class DataBossListener:
             self.bridge.send_message(reply, thread_id=thread_id)
             return
 
+        if content_lower.startswith(("/ai ", "/ask ", "/hoi ")):
+            query = content[4:].strip()
+            self.bridge.send_typing(thread_id)
+            reply = self.brain.ask_ai(query, sender_name=sender_name)
+            self.bridge.send_message(reply, thread_id=thread_id)
+            return
+
         # 2. Kiểm tra xem có phải báo cáo thi công công trường hay không
         if self.brain.parser.is_construction_report(content):
             print(f"[Đại ca dữ liệu] Phát hiện báo cáo thi công từ {sender_name}! Tiến hành bóc tách...")
@@ -118,14 +125,27 @@ class DataBossListener:
             print(f"[Đại ca dữ liệu] Đã nạp thành công báo cáo #{result['report_id']} và gửi phản hồi!")
             return
 
-        # 3. Nếu tin nhắn có nhắc tên "Đại ca dữ liệu" hoặc "đại ca"
-        if any(k in content_lower for k in ["đại ca dữ liệu", "đại ca", "bot dữ liệu"]):
+        # 3. Nếu tin nhắn có nhắc tên "Đại ca dữ liệu", "đại ca", "@bot"
+        if any(k in content_lower for k in ["đại ca dữ liệu", "đại ca", "bot dữ liệu", "@đại ca", "@bot"]):
             self.bridge.send_typing(thread_id)
-            reply = (
-                f"Chào anh em! 'Đại ca dữ liệu' có mặt ở đây để phục vụ dự án.\n"
-                f"Anh em cứ bắn báo cáo ca/ngày thi công vào nhóm, việc tổng hợp số liệu, cập nhật Database và xuất Excel để tôi lo!\n"
-                f"Gõ `/help` để xem hướng dẫn lệnh điều hành nhé."
-            )
+            
+            # Nếu người dùng đặt câu hỏi hoặc hỏi thăm tiến độ
+            clean_query = content
+            for prefix in ["@đại ca dữ liệu", "@đại ca", "@bot", "đại ca ơi", "đại ca cho hỏi", "đại ca"]:
+                if clean_query.lower().startswith(prefix):
+                    clean_query = clean_query[len(prefix):].strip(" ,:?-")
+                    break
+
+            if len(clean_query) >= 3:
+                reply = self.brain.ask_ai(clean_query, sender_name=sender_name)
+            else:
+                ai_status = "🟢 Trợ lý AI Claude Haiku đang sẵn sàng!" if self.brain.claude_engine.is_available else "🟡 Trợ lý AI đang chờ ANTHROPIC_API_KEY trong .env."
+                reply = (
+                    f"Chào anh em! 'Đại ca dữ liệu' có mặt ở đây để phục vụ dự án.\n"
+                    f"• {ai_status}\n"
+                    f"• Anh em cứ bắn báo cáo ca/ngày thi công vào nhóm, việc bóc tách số liệu, cập nhật Database và xuất Excel để tôi lo!\n"
+                    f"• Anh em có thể hỏi tôi bất kỳ điều gì: `@đại ca tiến độ mố M2 thế nào?` hoặc gõ `/help` để xem lệnh nhé."
+                )
             self.bridge.send_message(reply, thread_id=thread_id)
             return
 

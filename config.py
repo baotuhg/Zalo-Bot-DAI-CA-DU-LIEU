@@ -12,8 +12,16 @@ if not ENV_FILE.exists():
 ZALO_DAEMON_URL=http://127.0.0.1:3712
 DEFAULT_GROUP_NAME=307 HỒ SƠ SẠT LỞ
 
-# Cấu hình AI Provider (tùy chọn)
-AI_PROVIDER=gemini
+# Cấu hình AI Provider (claude / gemini)
+AI_PROVIDER=claude
+
+# Anthropic Claude API Key (Dán key sk-ant-... của bạn vào đây)
+ANTHROPIC_API_KEY=
+
+# Model Claude Haiku (Khuyên dùng: claude-3-5-haiku-20241022 siêu nhanh & siêu rẻ)
+CLAUDE_MODEL=claude-3-5-haiku-20241022
+
+# (Tùy chọn dự phòng) Google Gemini API
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
 """
@@ -36,7 +44,9 @@ class Config:
     ZALO_DAEMON_URL: str = os.getenv("ZALO_DAEMON_URL", "http://127.0.0.1:3712")
     DEFAULT_GROUP_NAME: str = os.getenv("DEFAULT_GROUP_NAME", "307 HỒ SƠ SẠT LỞ")
     
-    # AI Config (tùy chọn nâng cao)
-    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "gemini").lower()
+    # AI Config (Claude Anthropic / Gemini)
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "claude").lower()
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+    CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

@@ -137,6 +137,31 @@ Thời tiết: Nắng tốt
 
 ---
 
+## 🧠 HƯỚNG DẪN KÍCH HOẠT TRỢ LÝ AI CLAUDE 3.5 HAIKU (ANTHROPIC)
+
+Hệ thống được tích hợp sẵn động cơ AI của **Claude 3.5 Haiku** để giúp Bot hiểu được cả những tin nhắn viết tự do, lộn xộn và có thể trò chuyện, trả lời số liệu như một kỹ sư thực thụ:
+
+### 1. Cách điền khóa API (Chỉ làm 1 lần):
+1. Mở file **`.env`** trong thư mục dự án bằng Notepad.
+2. Tìm dòng `ANTHROPIC_API_KEY=` và dán key của bạn vào:
+   ```env
+   AI_PROVIDER=claude
+   ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxx
+   CLAUDE_MODEL=claude-3-5-haiku-20241022
+   ```
+3. Lưu file lại. Khởi động lại Bot (`CHAY_HE_THONG.bat`) là xong!
+
+### 2. Các tính năng AI siêu tiện lợi trên Zalo:
+* **Hỏi đáp thông minh:** Gõ trực tiếp vào nhóm Zalo hoặc chat riêng:
+  * `/ai tình hình cọc mố M2 hôm nay thế nào?`
+  * `@đại ca nhà thầu nào đang làm tốt nhất tuần này?`
+  * `@đại ca tổng hợp khối lượng đất đào đắp đến nay?`
+  ➔ Bot sẽ tự truy vấn cơ sở dữ liệu SQLite và dùng Claude Haiku trả lời ngắn gọn, chuẩn xác.
+* **Bóc tách báo cáo tự do:** Kỹ sư nhắn tin không theo mẫu cứng nhắc, Bot vẫn tự hiểu và bóc tách chuẩn vào Database & Excel!
+* **Dự phòng an toàn:** Nếu chưa điền key hoặc tài khoản hết credit, hệ thống tự động chạy bằng bộ lọc Regex nội bộ, không bao giờ bị dừng bot.
+
+---
+
 ## ❓ CÁC SỰ CỐ THƯỜNG GẶP & CÁCH XỬ LÝ (FAQ)
 
 ### 1. Bấm vào file `.bat` bị hiện cửa sổ đen rồi tắt ngay?

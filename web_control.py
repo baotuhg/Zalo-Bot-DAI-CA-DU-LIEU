@@ -151,12 +151,18 @@ class WebControlHandler(http.server.SimpleHTTPRequestHandler):
             db = ConstructionDB()
             summary = db.get_db_summary()
 
+            from core.claude_engine import ClaudeEngine
+            claude = ClaudeEngine()
+
             data = {
                 "bot_running": bool(bot_pid),
                 "bot_pid": bot_pid,
                 "zalo_connected": zalo_connected,
                 "zalo_user": user_name or "Chưa đăng nhập",
                 "zalo_uid": uid,
+                "ai_provider": Config.AI_PROVIDER,
+                "ai_available": claude.is_available,
+                "ai_model": Config.CLAUDE_MODEL,
                 "cloud_url": "https://baotuhg.github.io/Zalo-Bot-DAI-CA-DU-LIEU/",
                 "total_reports": summary.get("total_reports", 0),
                 "total_items": summary.get("total_progress_items", 0),
