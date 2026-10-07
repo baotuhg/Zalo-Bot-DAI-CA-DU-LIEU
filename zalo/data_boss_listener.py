@@ -12,9 +12,10 @@ class DataBossListener:
     phân tích số liệu, cập nhật Database/Excel và phản hồi điều hành.
     """
 
-    def __init__(self, brain: DataBossBrain, bridge: ZaloBridge, target_group_keywords: Optional[List[str]] = None):
+    def __init__(self, brain: DataBossBrain, bridge: ZaloBridge, target_group_keywords: Optional[List[str]] = None, bot_name: str = ""):
         self.brain = brain
         self.bridge = bridge
+        self.bot_name = bot_name or ""
         self.is_running = False
         # Các từ khóa nhận diện nhóm công trường cần giám sát
         self.target_group_keywords = target_group_keywords or [
@@ -125,13 +126,25 @@ class DataBossListener:
             print(f"[Đại ca dữ liệu] Đã nạp thành công báo cáo #{result['report_id']} và gửi phản hồi!")
             return
 
-        # 3. Nếu tin nhắn có nhắc tên "Đại ca dữ liệu", "đại ca", "@bot"
-        if any(k in content_lower for k in ["đại ca dữ liệu", "đại ca", "bot dữ liệu", "@đại ca", "@bot"]):
+        # 3. Nếu tin nhắn có nhắc tên "Đại ca dữ liệu", "đại ca", "@bot", hoặc tag nick bot
+        triggers = ["đại ca dữ liệu", "đại ca", "bot dữ liệu", "@đại ca", "@bot"]
+        if self.bot_name:
+            clean_bname = self.bot_name.strip().lower()
+            if clean_bname:
+                triggers.extend([clean_bname, f"@{clean_bname}"])
+
+        if any(k in content_lower for k in triggers):
             self.bridge.send_typing(thread_id)
             
             # Nếu người dùng đặt câu hỏi hoặc hỏi thăm tiến độ
             clean_query = content
-            for prefix in ["@đại ca dữ liệu", "@đại ca", "@bot", "đại ca ơi", "đại ca cho hỏi", "đại ca"]:
+            all_prefixes = ["@đại ca dữ liệu", "@đại ca", "@bot", "đại ca ơi", "đại ca cho hỏi", "đại ca", "bot ơi"]
+            if self.bot_name:
+                clean_bname = self.bot_name.strip().lower()
+                all_prefixes.extend([f"@{clean_bname}", clean_bname])
+
+            # Sắp xếp prefix dài trước ngắn sau để bóc tách chính xác nhất
+            for prefix in sorted(all_prefixes, key=len, reverse=True):
                 if clean_query.lower().startswith(prefix):
                     clean_query = clean_query[len(prefix):].strip(" ,:?-")
                     break
@@ -141,10 +154,10 @@ class DataBossListener:
             else:
                 ai_status = "🟢 Trợ lý AI Claude Haiku đang sẵn sàng!" if self.brain.claude_engine.is_available else "🟡 Trợ lý AI đang chờ ANTHROPIC_API_KEY trong .env."
                 reply = (
-                    f"Chào anh em! 'Đại ca dữ liệu' có mặt ở đây để phục vụ dự án.\n"
+                    f"Chào anh em! '{self.bot_name or 'Đại ca dữ liệu'}' có mặt ở đây để phục vụ dự án.\n"
                     f"• {ai_status}\n"
                     f"• Anh em cứ bắn báo cáo ca/ngày thi công vào nhóm, việc bóc tách số liệu, cập nhật Database và xuất Excel để tôi lo!\n"
-                    f"• Anh em có thể hỏi tôi bất kỳ điều gì: `@đại ca tiến độ mố M2 thế nào?` hoặc gõ `/help` để xem lệnh nhé."
+                    f"• Anh em có thể hỏi tôi bất kỳ điều gì: `@{self.bot_name or 'đại ca'} tiến độ mố M2 thế nào?` hoặc gõ `/help` để xem lệnh nhé."
                 )
             self.bridge.send_message(reply, thread_id=thread_id)
             return

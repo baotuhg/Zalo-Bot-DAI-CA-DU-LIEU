@@ -89,7 +89,7 @@ def main():
     excel_syncer = ConstructionExcelSyncer()
     html_syncer = HtmlDashboardSyncer()
     brain = DataBossBrain(db, excel_syncer, parser, html_syncer)
-    listener = DataBossListener(brain, bridge)
+    listener = DataBossListener(brain, bridge, bot_name=user_name)
 
     print(f"📁 Cơ sở dữ liệu: {db.db_path}")
     print(f"📊 Báo cáo Excel: {excel_syncer.excel_path}")
